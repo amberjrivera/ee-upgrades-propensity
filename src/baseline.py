@@ -15,7 +15,7 @@ from sklearn.svm import SVC
 from sklearn.gaussian_process.kernels import RBF
 from sklearn.gaussian_process import GaussianProcessClassifier
 from sklearn.tree import DecisionTreeClassifier
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier, AdaBoostClassifier
+from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier, GradientBoostingClassifier, AdaBoostClassifier
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis, QuadraticDiscriminantAnalysis
 from sklearn.neural_network import MLPClassifier
 # from xgboost import XGBClassifier
@@ -97,6 +97,7 @@ model_names  = ["Logistic Regression",
            # "Gaussian Process", #freezes up
            "Decision Tree",
            "Random Forest",
+           "Extra Trees",
            "GradientBoosting",
            "AdaBoost",
            # "XGBoost",
@@ -115,6 +116,7 @@ classifiers = [
     # GaussianProcessClassifier(1.0 * RBF(1.0)),
     DecisionTreeClassifier(max_depth=5, random_state=None),
     RandomForestClassifier(max_depth=5, n_estimators=10, max_features=20, random_state=None),
+    ExtraTreesClassifier(n_estimators=10, criterion='entropy', max_features=10),
     GradientBoostingClassifier(random_state=None),
     AdaBoostClassifier(random_state=None),
     # XGBoost()

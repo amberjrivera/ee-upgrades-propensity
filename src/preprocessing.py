@@ -169,7 +169,7 @@ def clean_and_drop(filepath): #238 --> 50-60 attributes (many nested)
         'zoning_code',
         ], inplace=True)
 
-    #drop redundant features (71)
+    #drop redundant features (72)
     df.drop(columns=[
         'adjusted_job_cost_2',
         'adjusted_job_cost_3',
@@ -210,6 +210,7 @@ def clean_and_drop(filepath): #238 --> 50-60 attributes (many nested)
         'monthly_payments_3',
         'monthly_savings_2',
         'monthly_savings_3',
+        'neighborhood',
         'pv_heat_only_carbon_savings_2',
         'pv_heat_only_carbon_savings_3',
         'pv_heat_only_costs_2',
@@ -266,6 +267,10 @@ def clean_and_drop(filepath): #238 --> 50-60 attributes (many nested)
         'unit'
         ], inplace=True)
 
+    # Drop rows without sale_date
+    city['last_sale_date'].dropna(inplace=True)
+
+
 
     #TODO fold categories
     # land_use, site_type, frame_type, secondary_building_type, owner_occupied, roof_cover_type, and all permits fields
@@ -276,8 +281,15 @@ def clean_and_drop(filepath): #238 --> 50-60 attributes (many nested)
 def impute(df):
     # Fill median
     df['acres'].fillna(df['acres'].median(), inplace=True)
+
     df['census_income_median'].fillna(df['census_income_median'].median(), inplace=True)
+
     df['last_sale_price'].fillna(df['last_sale_price'].median(), inplace=True)
+
+    # Fill mode
+    df['pv_potential_kwhr_yr'].fillna(df['pv_potential_kwhr_yr'].mode(), inplace=True)
+
+    df['pv_potential_watts'].fillna(df['pv_potential_watts'].mode(), inplace=True)
 
 
 def feature_engineer(df):
@@ -290,7 +302,7 @@ def feature_engineer(df):
     # time_since_last_sale' --> use last_sale_date and update_date (date the data were pulled; uniform), then drop them.
 
 
-def balance(df): # either undersample before cv, or oversample within cv
+def balance(): # either undersample before cv, or oversample within cv
     #TODO: Compare performance undersampling majority vs. oversampling minority. Try SMOTE.
     #TODO: If oversampling (within cv): Compare ADASYN, SMOTE, RandomOverSampler http://contrib.scikit-learn.org/imbalanced-learn/stable/over_sampling.html#smote-adasyn
     pass
