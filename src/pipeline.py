@@ -1,9 +1,5 @@
-####################
-# PIPELINE
-# models
-# pickle the model
-####################
-'''WORK IN PROGRESS
+'''
+WORK IN PROGRESS
 
 This script can be run to create and score a classification model.
 
@@ -72,7 +68,7 @@ df['assessor_id'] = df['assessor_id'].str[1:]
 # add labels
 preprocessing.add_labels(df)
 
-# run through preprocessing, transforms, and dim reduction, then get X and y.
+# run through preprocessing, transforms, and dim reduction, then get X and y. (pop by 'labels' label)
 
 #split out test data
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33)

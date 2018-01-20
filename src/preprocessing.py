@@ -49,6 +49,24 @@ class Clean:
 
 
 #If imputing with either mean, median, or mode, will use sklearn.preprocessing.Imputer
+# https://stackoverflow.com/questions/25239958/impute-categorical-missing-values-in-scikit-learn/25562948
+
+class CatImpute(TransformerMixin, BaseEstimator):
+    def __init__(self):
+        """Impute missing values on dataframe of only categorical columns.
+
+        Columns of dtype object are imputed with the most frequent value in column.
+
+        """
+    def fit(self, X, y=None):
+
+        self.fill = pd.Series([X[c].value_counts().index[0] for c in X], index=X.columns)
+
+        return self
+
+    def transform(self, X):
+        return X.fillna(self.fill)
+
 
 class CustomImpute():
     '''TK
@@ -106,20 +124,18 @@ def add_labels(df):
     return df
 
 
-def clean_and_drop(filepath): #238 --> 50-60 attributes (many nested)
+def clean_and_drop(df): # 18406 x 239-->17351 x 116 (nested cols)
     '''
-    Load the (test or new) data and quick-pass clean it up.
+    Quick-pass clean up.
 
     Parameters
     ----------
-    filepath :  path to csv of the data.
+    df :  Loaded and labeled df
 
     Returns
     ----------
     df :        cleaned up feature matrix
     '''
-    # #load raw features data
-    # df = pd.read_csv('../data/city.csv')
 
     #drop PRIZM segments (3)
     df.drop(columns=[
@@ -267,13 +283,95 @@ def clean_and_drop(filepath): #238 --> 50-60 attributes (many nested)
         'unit'
         ], inplace=True)
 
-    # Drop rows without sale_date
-    city['last_sale_date'].dropna(inplace=True)
+    # Drop 1050 rows without sale_date or sale_price (same set)
+    df.dropna(subset=['last_sale_price', 'last_sale_date'], inplace=True)
+
+    #Remap buidling_condition (misspelling intentional)
+    df.replace({'buidling_condition':{
+        'LOW':1,
+        'FAIR':2,
+        'AVERAGE':3,
+        'AVERAGE +':4,
+        'AVERAGE ++':5,
+        'GOOD':6,
+        'GOOD +':7,
+        'GOOD ++':8,
+        'VERY GOOD':9,
+        'VERY GOOD +':10,
+        'VERY GOOD ++':11,
+        'EXCELLENT':12,
+        'EXCELLENT +':13,
+        'EXCELLENT++':14,
+        'EXCEPTIONAL 1':15}
+        }, inplace=True)
+
+    return df
 
 
+def feature_engineer(df): #17351 x 116 --> 17351 x 81
+    # Spatial clustering
+    df['num_upgrades_parcel'] = df['labels'].groupby(df['parcel_id']).transform('sum')
 
-    #TODO fold categories
-    # land_use, site_type, frame_type, secondary_building_type, owner_occupied, roof_cover_type, and all permits fields
+    df['num_upgrades_subdivision'] = df['labels'].groupby(df['subdivision']).transform('sum')
+
+    df['num_upgrades_zip'] = df['labels'].groupby(df['zip']).transform('sum')
+
+    df.drop(columns=['parcel_id', 'subdivision', 'zip'], inplace=True)
+
+    # Days since last sale
+    df['update_date'] = pd.to_datetime(df['update_date'])
+    df['last_sale_date'] = pd.to_datetime(df['last_sale_date'])
+
+    df['time_since_sale'] = (df['update_date'] - df['last_sale_date']).dt.days
+
+    df.drop(columns=['update_date', 'last_sale_date'], inplace=True)
+
+
+    # Handle sparse permits data
+        #Quick: total permits ever
+        #Good: num_permits_since_purchase
+        #Better: By category, num_permits_since_purchase
+        #Best:
+    permit_cols = [
+        'permit_electrical',
+        'permit_plumbing',
+        'permit_roof',
+        'permit_gas_furnace',
+        'permit_ac',
+        'permit_water_heater',
+        'permit_boiler',
+        'permit_existing_boiler',
+        'permit_direct_heater',
+        'permit_misc',
+        'permit_siding',
+        'permit_evaporative_cooler',
+        'permit_addition_or_remodel',
+        'permit_gas_range',
+        'permit_pool_or_hot_tub',
+        'permit_gas_dryer',
+        'permit_solar_thermal',
+        'permit_gas_fireplace_or_stove',
+        'permit_wood_fireplace_or_stove',
+        'permit_heat_pump',
+        'permit_generator',
+        'permit_basement_finish',
+        'permit_accessory_building',
+        'permit_rooftop_pv',
+        'permit_window_replacement',
+        'permit_pool_heater',
+        'permit_geothermal_system',
+        'permit_electric_water_heater',
+        'permit_wind_turbine',
+        'permit_whole_house_fan',
+        'permit_ev_charger',
+        'permit_mechanical_ventilation',
+        'permit_high_efficiency_heating',
+        'permit_oil_heat',
+        'permit_new_electrical_service'
+            ]
+
+    df['permits'] = (df[permit_cols].notnull()).sum(1)
+    df.drop(columns=permit_cols, inplace=True)
 
     return df
 
@@ -284,22 +382,30 @@ def impute(df):
 
     df['census_income_median'].fillna(df['census_income_median'].median(), inplace=True)
 
-    df['last_sale_price'].fillna(df['last_sale_price'].median(), inplace=True)
-
     # Fill mode
-    df['pv_potential_kwhr_yr'].fillna(df['pv_potential_kwhr_yr'].mode(), inplace=True)
+    df['pv_potential_kwhr_yr'].fillna(df['pv_potential_kwhr_yr'].mode()[0], inplace=True)
 
-    df['pv_potential_watts'].fillna(df['pv_potential_watts'].mode(), inplace=True)
+    df['pv_potential_watts'].fillna(df['pv_potential_watts'].mode()[0], inplace=True)
+
+    # Fill 'Unknown'
+    df.replace({'ac_type': np.nan}, {'ac_type': 'UNKNOWN'}, inplace=True)
+
+    df.replace({'zillow_neighborhood': np.nan}, {'zillow_neighborhood': 'Unknown'}, inplace=True)
+
+    df.replace({'roof_cover_type': np.nan}, {'roof_cover_type': 'UNKNOWN'}, inplace=True)
+
+    return df
 
 
-def feature_engineer(df):
-    pass
-    # subdivision has 785 categories.
-    # parcel_id has 34 categories
-    # zip has 5 categories
-    # Spatial clustering: create num_upgrades_subdivision, num_upgrades_parcel, num_upgrades_zip, then drop the original fields.
-
-    # time_since_last_sale' --> use last_sale_date and update_date (date the data were pulled; uniform), then drop them.
+def cat_impute(df, cols):
+    '''
+    Fill mode on specified, categorical, columns.
+    '''
+    # cols = ['exterior_wall_type', 'frame_type', 'heating_type', 'interior_wall_type', 'land_use']
+    for col in cols:
+        mode = df[col].mode()[0]
+        df[col].fillna(mode, inplace=True)
+    return df
 
 
 def balance(): # either undersample before cv, or oversample within cv
@@ -316,3 +422,6 @@ if __name__ == '__main__':
 
     #Clean up unique identifier
     df['assessor_id'] = df['assessor_id'].str[1:]
+
+    # categorical columns to impute with mode
+    cols = ['exterior_wall_type', 'frame_type', 'heating_type', 'interior_wall_type', 'land_use']
