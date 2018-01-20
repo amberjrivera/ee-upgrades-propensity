@@ -1,9 +1,12 @@
 '''
 WORK IN PROGRESS
 
-This script can be run to create and score a classification model.
+Create and score a classification model.
 
-It employs StratifiedKfold cross-validation within Sklearn's GridSearchCV to explore and compare potential models, using Sklearn's Pipeline constructor to efficiently handle mixed numerical and categorical data and many transforms for dimensionality reduction.
+Use StratifiedKfold cross-validation within Sklearn's GridSearchCV to
+explore and compare potential models, using Sklearn's Pipeline constructor to
+efficiently handle mixed numerical and categorical data and many transforms
+for dimensionality reduction.
 
 The final model is then saved as a pickled file for future use.
 '''
