@@ -73,16 +73,74 @@ dummy_cols = [
 df = pd.get_dummies(df, columns=dummy_cols, drop_first=True)
 
 # undersample majority class to handle class imbalance
-num_pos = len(df[df['labels'] == 1])
-num_neg = df.shape[0] - num_pos
-num_to_drop = (num_neg//2) - num_pos #tinker, grid search later
-df.drop(df.query('labels == 0').sample(n=num_to_drop).index, inplace=True)
+df = balance(df)
 
 # Get to X
 y = df.pop('labels')
 X = df
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33)
+
+#Scale continuous features
+cols_to_scale = [
+    'acres',
+    'adjusted_job_cost_1',
+    'bedroom_count',
+    'carbon_base_1',
+    'carbon_improved_1',
+    'carbon_savings_1',
+    'census_20_minutes_or_more_as_percent',
+    'census_average_household_size',
+    'census_bachelors_or_higher_as_percent',
+    'census_households_over_60_as_percent',
+    'census_income_median',
+    'census_limited_english_as_percent',
+    'census_public_assistance_as_percent',
+    'effective_year_built',
+    'electricity_usage_kwh_base_1',
+    'electricity_usage_kwh_improved_1',
+    'electricity_usage_kwh_savings_1',
+    'energy_cost_base_1',
+    'energy_cost_improved_1',
+    'energy_cost_savings_1',
+    'finished_basement_area',
+    'finished_building_area',
+    'full_bath_count',
+    'gas_usage_therm_base_1',
+    'gas_usage_therm_improved_1',
+    'gas_usage_therm_savings_1',
+    'half_bath_count',
+    'incremental_job_cost_1',
+    'last_sale_price',
+    'monthly_cash_flow_1',
+    'monthly_payments_1',
+    'monthly_savings_1',
+    'pv_heat_only_carbon_savings_1',
+    'pv_heat_only_costs_1',
+    'pv_heat_only_dollar_savings_1',
+    'pv_heat_only_monthly_cash_flow_1',
+    'pv_heat_only_monthly_payments_1',
+    'pv_heat_only_monthly_savings_1',
+    'pv_net_zero_carbon_savings_1',
+    'pv_net_zero_costs_1',
+    'pv_net_zero_dollar_savings_1',
+    'pv_net_zero_monthly_cash_flow_1',
+    'pv_net_zero_monthly_payments_1',
+    'pv_net_zero_monthly_savings_1',
+    'pv_potential_kwhr_yr',
+    'pv_potential_watts',
+    'pv_w_required_heat_only_1',
+    'pv_w_required_net_zero_1',
+    'retrofit_cost_1',
+    'room_count',
+    'simple_payback_1',
+    'total_assessed_value',
+    'total_building_value',
+    'total_land_value',
+    'year_built',
+    ]
+
+df = scale(df, cols_to_scale)
 
 # #COMPARE MODELS
 # model_names  = ["Logistic Regression",
@@ -180,29 +238,31 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33)
 # TUNE BEST MODEL
 gb = GradientBoostingClassifier() #out of bag estimate
 parameters = {
-    'loss':('deviance', 'exponential'),
-    'learning_rate': [0.1, 0.05, 0.025, 0.01, 0.001, 0.0001],
-    'n_estimators': [25, 50, 100, 200, 400, 800],
-    'max_depth': [3, 6, 9, 12, 15, 18],
-    'criterion': ('friedman_mse', 'mse', 'mae'),
-    'min_samples_split': [2, 6, 18, 54, 162, 486],
-    'min_samples_leaf': [1, 10, 20, 30, 40, 50],
-    'min_weight_fraction_leaf': [0.0, 0.025, 0.05, 0.1, 0.2, 0.25],
-    'subsample': [0.75, 0.8, 0.85, 0.9, 0.95, 1.0],
-    'max_features': [0.05, 0.20, 0.35, 0.50, 0.65, 0.70],
-    'max_leaf_nodes': [None, 5, 10, 15, 20, 25],
-    'min_impurity_decrease': [0.0, 0.001, 0.01, 0.1, 0.15, 0.2],
-    'init': (None, BaseEstimator),
-    'verbose': [1],
-    'warm_start': [False],
-    'random_state': [None, 22]
+    'learning_rate': [0.025, 0.05, 0.075],
+    'n_estimators': [100, 200, 400, 600],
+    'max_depth': [3, 6, 9, 12, 15],
+    'min_samples_split': [2, 6, 12, 24],
+    'min_samples_leaf': [30, 50, 70],
+    'min_weight_fraction_leaf': [0.0, 0.025, 0.05],
+    'subsample': [0.4, 0.5, 0.6, 0.75, 0.85],
+    'max_features': [10, 15, 20],
+    'max_leaf_nodes': [10, 15, 20, None],
+    'min_impurity_decrease': [0.0, 0.001, 0.01],
 }
 
-clf = GridSearchCV(gb, param_grid=parameters, scoring='f1_weighted')
-clf.fit(X_train, y_train)
+# clf = GridSearchCV(gb, param_grid=parameters, scoring='f1_weighted', n_jobs=2, cv=None, refit=True)
+# clf.fit(X_train, y_train)
+#
+# print("Best parameters set found on training set:")
+# print(clf.best_params_)
+#
+# print("Most important features found on training set:")
+# print(clf.feature_importances_)
 
-print("Best parameters set found on training set:")
+clf_two = RandomizedSearchCV(gb, param_distributions=parameters, n_iter=100, scoring='f1_weighted', n_jobs=2, cv=None, refit=True)
+
+clf_two.fit(X_train, y_train)
+best_score = clf_two.best_score_
+print("Best score was {}.".format(best_score))
+print("Best parameters found on training set:")
 print(clf.best_params_)
-
-print("Most important features found on training set:")
-print(clf.feature_importances_)

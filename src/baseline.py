@@ -6,6 +6,7 @@
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split, cross_val_score, GridSearchCV
+from sklearn.preprocessing import RobustScaler
 # from sklearn.metrics import f1_score, classification_report
 # from sklearn.pipeline import Pipeline, FeatureUnion
 from sklearn.linear_model import LogisticRegression
@@ -37,7 +38,6 @@ df = pd.read_csv('../data/city.csv', usecols=[
 'nrel_stories',
 'nrel_vintage',
 'primary_building_type',
-'subdivision',
 'year_built',
 'last_sale_price'
 ])
@@ -58,7 +58,6 @@ dummies = [
 'nrel_stories',
 'nrel_vintage',
 'primary_building_type',
-'subdivision'
 ]
 
 df = pd.get_dummies(df, columns=dummies, drop_first=True) #splits 9 --> 57 cols
@@ -86,6 +85,13 @@ y = df.pop('labels')
 X = df
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33)
+
+#scale continuous
+cols_to_scale = ['year_built', 'last_sale_price']
+scaler = RobustScaler()
+df[cols_to_scale] = scaler.fit_transform(df[cols_to_scale])
+
+
 
 
 #COMPARE MODELS

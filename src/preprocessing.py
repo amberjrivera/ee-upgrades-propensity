@@ -6,7 +6,7 @@ All functions will eventually be written as classes in order to feed into Sklear
 '''
 import pandas as pd
 import numpy as np
-from sklearn.preprocessing import Imputer
+from sklearn.preprocessing import Imputer, StandardScaler, RobustScaler, robust_scale
 from sklearn.base import TransformerMixin, BaseEstimator
 
 
@@ -408,10 +408,35 @@ def cat_impute(df, cols):
     return df
 
 
-def balance(): # either undersample before cv, or oversample within cv
-    #TODO: Compare performance undersampling majority vs. oversampling minority. Try SMOTE.
-    #TODO: If oversampling (within cv): Compare ADASYN, SMOTE, RandomOverSampler http://contrib.scikit-learn.org/imbalanced-learn/stable/over_sampling.html#smote-adasyn
-    pass
+def balance(df):
+    # undersample majority class to handle class imbalance
+    num_pos = len(df[df['labels'] == 1])
+    num_neg = df.shape[0] - num_pos
+    num_to_drop = int((num_neg*.79) - num_pos) #25% pos - tinker, grid search later
+    df.drop(df.query('labels == 0').sample(n=num_to_drop).index, inplace=True)
+    return df
+
+
+def scale(df, cols):
+    scaler = RobustScaler(copy=False)
+    df[cols] = scaler.fit_transform(df[cols])
+    return df
+
+# def scale(df, cols):
+#     nums = df[cols]
+#     df.drop(columns=cols, inplace=True)
+#
+#     scaler = RobustScaler(copy=False)
+#     scaled_nums = scaler.fit_transform(nums)
+#
+#     scaled_df = pd.concat([df, scaled_nums], axis=1)
+#     return scaled_df
+
+# def scale(df, cols):
+#     scaler = RobustScaler()
+#     indices = [df.columns.get_loc(c) for c in df.columns if c in cols]
+#     df[indices] = scaler.fit_transform(df[cols])
+#     return df
 
 
 
