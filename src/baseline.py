@@ -95,41 +95,53 @@ df[cols_to_scale] = scaler.fit_transform(df[cols_to_scale])
 
 
 #COMPARE MODELS
-model_names  = ["Logistic Regression",
-           "K-nearest Neighbors",
-           # "Naive Bayes",
+model_names  = [
+           # "Logistic Regression",
+           # "K-nearest Neighbors",
+           # # "Naive Bayes",
            # "Linear SVM",       #freezes up
            # "RBF SVM",          #low performing
            # "Gaussian Process", #freezes up
-           "Decision Tree",
-           "Random Forest",
-           "Extra Trees",
+           # "Decision Tree",
+           # "Random Forest",
+           # "Extra Trees",
            "GradientBoosting",
-           "AdaBoost",
+           # "AdaBoost",
            # "XGBoost",
            # "CatBoost",
-           "LDA",
+           # "LDA",
            # "QDA",
-           "Neural Net"
+           # "Neural Net"
            ]
 
 classifiers = [
-    LogisticRegression(penalty='l1', tol=0.001),
-    KNeighborsClassifier(n_neighbors=3),
+    # LogisticRegression(penalty='l1', tol=0.001),
+    # KNeighborsClassifier(n_neighbors=3),
     # GaussianNB(),
     # SVC(kernel='linear', C=0.25),
     # SVC(kernel='rbf', gamma=2, C=1),
     # GaussianProcessClassifier(1.0 * RBF(1.0)),
-    DecisionTreeClassifier(max_depth=5, random_state=None),
-    RandomForestClassifier(max_depth=5, n_estimators=10, max_features=20, random_state=None),
-    ExtraTreesClassifier(n_estimators=10, criterion='entropy', max_features=10),
-    GradientBoostingClassifier(random_state=None),
-    AdaBoostClassifier(random_state=None),
+    # DecisionTreeClassifier(max_depth=5, random_state=None),
+    # RandomForestClassifier(max_depth=5, n_estimators=10, max_features=20, random_state=None),
+    # ExtraTreesClassifier(n_estimators=10, criterion='entropy', max_features=10),
+    GradientBoostingClassifier(
+        subsample=0.85, #try 0.6
+        n_estimators=600, #try 200, 400
+        min_weight_fraction_leaf=0.01,
+        min_samples_split=15,
+        min_samples_leaf=30,
+        min_impurity_decrease=0.01,
+        max_leaf_nodes=None, #try 10, 15
+        max_features=15,
+        max_depth=12,
+        learning_rate=0.05
+        )
+    # AdaBoostClassifier(random_state=None),
     # XGBoost()
     # CatBoostClassifier(random_seed=rs),
-    LinearDiscriminantAnalysis(solver='eigen', shrinkage='auto', n_components=10),
+    # LinearDiscriminantAnalysis(solver='eigen', shrinkage='auto', n_components=10),
     # QuadraticDiscriminantAnalysis(reg_param=0.5, store_covariance=True),
-    MLPClassifier(alpha=1, tol=0.001, random_state=None)
+    # MLPClassifier(alpha=1, tol=0.001, random_state=None)
     ]
 
 cv_folds = 4
