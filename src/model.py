@@ -4,9 +4,9 @@
 
 import pandas as pd
 import numpy as np
-from sklearn.model_selection import train_test_split, cross_val_score, GridSearchCV, RandomizedSearchCV
+from sklearn.model_selection import train_test_split, cross_val_score
+from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
 from sklearn.metrics import f1_score, classification_report
-# from sklearn.pipeline import Pipeline, FeatureUnion
 from sklearn.linear_model import LogisticRegression
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.naive_bayes import GaussianNB
@@ -14,8 +14,10 @@ from sklearn.svm import SVC
 from sklearn.gaussian_process.kernels import RBF
 from sklearn.gaussian_process import GaussianProcessClassifier
 from sklearn.tree import DecisionTreeClassifier
-from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier, GradientBoostingClassifier, AdaBoostClassifier
-from sklearn.discriminant_analysis import LinearDiscriminantAnalysis, QuadraticDiscriminantAnalysis
+from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier
+from sklearn.ensemble import GradientBoostingClassifier, AdaBoostClassifier
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
 from sklearn.neural_network import MLPClassifier
 # from xgboost import XGBClassifier
 # from catboost import CatBoostClassifier
@@ -43,7 +45,8 @@ df = feature_engineer(df)
 df = impute(df)
 
 # categorical columns to impute with mode
-cols = ['exterior_wall_type', 'frame_type', 'heating_type', 'interior_wall_type', 'land_use']
+cols = ['exterior_wall_type', 'frame_type', 'heating_type', \
+'interior_wall_type', 'land_use']
 
 df = cat_impute(df, cols)
 
@@ -51,6 +54,11 @@ df = cat_impute(df, cols)
 dummy_cols = Attributes().get_cat_attribs()
 
 df = pd.get_dummies(df, columns=dummy_cols, drop_first=True)
+
+# Scale continuous features
+cols_to_scale = Attributes().get_num_attribs()
+
+df = scale(df, cols_to_scale)
 
 # undersample majority class to handle class imbalance
 df = balance(df)
@@ -61,10 +69,6 @@ X = df
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33)
 
-#Scale continuous features
-cols_to_scale = Attributes().get_num_attribs()
-
-df = scale(df, cols_to_scale)
 
 #COMPARE MODELS
 model_names  = [
@@ -116,22 +120,24 @@ classifiers = [
     # MLPClassifier(alpha=1, tol=0.001, random_state=None)
     ]
 
-cv_folds = 4
-
-# Create summary dataframe "score board" to compare scores
-scores = pd.DataFrame(columns=['Models', 'accuracy', 'f1_weighted', 'combined'])
-scores['Models'] = model_names
-
-for model_name, clf in zip(model_names, classifiers):
-    # For each cv_fold, train, predict, score the selected classifier
-    # Compare models based on mean accuracy and mean f1_score
-    accuracy = round(cross_val_score(clf, X_train, y_train, cv=cv_folds, scoring='accuracy').mean(), 2)
-
-    f1_weighted = round(cross_val_score(clf, X_train, y_train, cv=cv_folds, scoring='f1_weighted').mean(), 2)
-
-    # Update the score board
-    scores.loc[scores['Models'] == model_name, 'accuracy'] = accuracy
-    scores.loc[scores['Models'] == model_name, 'f1_weighted'] = f1_weighted
+cv_folds = 3
+#
+# # Create summary dataframe "score board" to compare scores
+# scores = pd.DataFrame(columns=['Models', 'accuracy', 'f1_weighted', 'combined'])
+# scores['Models'] = model_names
+#
+# for model_name, clf in zip(model_names, classifiers):
+#     # For each cv_fold, train, predict, score the selected classifier
+#     # Compare models based on mean accuracy and mean f1_score
+#     accuracy = round(cross_val_score(clf, X_train, y_train, cv=cv_folds, \
+#     scoring='accuracy').mean(), 2)
+#
+#     f1_weighted = round(cross_val_score(clf, X_train, y_train, cv=cv_folds, \
+#     scoring='f1_weighted').mean(), 2)
+#
+#     # Update the score board
+#     scores.loc[scores['Models'] == model_name, 'accuracy'] = accuracy
+#     scores.loc[scores['Models'] == model_name, 'f1_weighted'] = f1_weighted
 
     # # Get feature importances where possible
     # # Random Forest
@@ -165,11 +171,11 @@ for model_name, clf in zip(model_names, classifiers):
     # if model_name == 'Logistic Regression":
     #     m = clf.fit(X_train, y_train) #TODO this is cv agnostic right now... Also not interpretable
     #     print(m.coef
-
-scores['combined'] = (scores['accuracy'] + scores['f1_weighted']) / 2
-
-print('\nComparing Classifiers...\n')
-print(scores)
+#
+# scores['combined'] = (scores['accuracy'] + scores['f1_weighted']) / 2
+#
+# print('\nComparing Classifiers...\n')
+# print(scores)
 
 
 # TUNE BEST MODEL
@@ -186,8 +192,9 @@ print(scores)
 #     'max_leaf_nodes': [10, 15, 20, None],
 #     'min_impurity_decrease': [0.0, 0.001, 0.01],
 # }
-
-# clf = GridSearchCV(gb, param_grid=parameters, scoring='f1_weighted', n_jobs=2, cv=None, refit=True)
+#
+# clf = GridSearchCV(gb, param_grid=parameters, scoring='f1_weighted', n_jobs=2, \
+# cv=None, refit=True)
 # clf.fit(X_train, y_train)
 #
 # print("Best parameters set found on training set:")
@@ -195,12 +202,34 @@ print(scores)
 #
 # print("Most important features found on training set:")
 # print(clf.feature_importances_)
-
-# --------------------
-# clf_two = RandomizedSearchCV(gb, param_distributions=parameters, n_iter=100, scoring='f1', n_jobs=2, cv=None, refit=True)
 #
-# clf_two.fit(X_train, y_train)
+# --------------------
+# clf_two = RandomizedSearchCV(gb, param_distributions=parameters, n_iter=100, \
+# scoring='f1', n_jobs=2, cv=None, refit=True)
+#
+# # # clf_two.fit(X_train, y_train)
 # best_score = clf_two.best_score_
 # print("Best score was {}.".format(best_score))
 # print("Best parameters found on training set:")
 # print(clf_two.best_params_)
+
+clf = GradientBoostingClassifier(
+    subsample=0.85, #try 0.6
+    n_estimators=600, #try 200, 400
+    min_weight_fraction_leaf=0.01,
+    min_samples_split=15,
+    min_samples_leaf=30,
+    min_impurity_decrease=0.01,
+    max_leaf_nodes=None, #try 10, 15
+    max_features=15,
+    max_depth=12,
+    learning_rate=0.05
+    )
+
+clf.fit(X_train, y_train)
+f1_weighted = round(cross_val_score(clf, X_train, y_train, cv=cv_folds, \
+scoring='f1_weighted').mean(), 2)
+
+print("Average score found in CV: {}.".format(f1_weighted))
+print("Feature importances:")
+print(clf.feature_importances_)
