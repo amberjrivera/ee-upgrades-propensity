@@ -19,8 +19,8 @@ from sklearn.discriminant_analysis import LinearDiscriminantAnalysis, QuadraticD
 from sklearn.neural_network import MLPClassifier
 # from xgboost import XGBClassifier
 # from catboost import CatBoostClassifier
-from preprocessing import *
-
+from transforms import *
+from attributes import Attributes
 
 
 #CLEAN AND GET TO X
@@ -48,25 +48,7 @@ cols = ['exterior_wall_type', 'frame_type', 'heating_type', 'interior_wall_type'
 df = cat_impute(df, cols)
 
 # get dummies
-dummy_cols = [
-    'ac_type',
-    'exterior_wall_type',
-    'frame_type',
-    'heating_type',
-    'interior_wall_type',
-    'land_use',
-    'nrel_attached_garage',
-    'nrel_foundation',
-    'nrel_heating_fuel',
-    'nrel_size',
-    'nrel_vintage',
-    'owner_occupied',
-    'primary_building_type',
-    'roof_cover_type',
-    'secondary_building_type',
-    'site_type',
-    'zillow_neighborhood'
-]
+dummy_cols = Attributes().get_cat_attribs()
 
 df = pd.get_dummies(df, columns=dummy_cols, drop_first=True)
 
@@ -80,63 +62,7 @@ X = df
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33)
 
 #Scale continuous features
-cols_to_scale = [
-    'acres',
-    'adjusted_job_cost_1',
-    'bedroom_count',
-    'carbon_base_1',
-    'carbon_improved_1',
-    'carbon_savings_1',
-    'census_20_minutes_or_more_as_percent',
-    'census_average_household_size',
-    'census_bachelors_or_higher_as_percent',
-    'census_households_over_60_as_percent',
-    'census_income_median',
-    'census_limited_english_as_percent',
-    'census_public_assistance_as_percent',
-    'effective_year_built',
-    'electricity_usage_kwh_base_1',
-    'electricity_usage_kwh_improved_1',
-    'electricity_usage_kwh_savings_1',
-    'energy_cost_base_1',
-    'energy_cost_improved_1',
-    'energy_cost_savings_1',
-    'finished_basement_area',
-    'finished_building_area',
-    'full_bath_count',
-    'gas_usage_therm_base_1',
-    'gas_usage_therm_improved_1',
-    'gas_usage_therm_savings_1',
-    'half_bath_count',
-    'incremental_job_cost_1',
-    'last_sale_price',
-    'monthly_cash_flow_1',
-    'monthly_payments_1',
-    'monthly_savings_1',
-    'pv_heat_only_carbon_savings_1',
-    'pv_heat_only_costs_1',
-    'pv_heat_only_dollar_savings_1',
-    'pv_heat_only_monthly_cash_flow_1',
-    'pv_heat_only_monthly_payments_1',
-    'pv_heat_only_monthly_savings_1',
-    'pv_net_zero_carbon_savings_1',
-    'pv_net_zero_costs_1',
-    'pv_net_zero_dollar_savings_1',
-    'pv_net_zero_monthly_cash_flow_1',
-    'pv_net_zero_monthly_payments_1',
-    'pv_net_zero_monthly_savings_1',
-    'pv_potential_kwhr_yr',
-    'pv_potential_watts',
-    'pv_w_required_heat_only_1',
-    'pv_w_required_net_zero_1',
-    'retrofit_cost_1',
-    'room_count',
-    'simple_payback_1',
-    'total_assessed_value',
-    'total_building_value',
-    'total_land_value',
-    'year_built',
-    ]
+cols_to_scale = Attributes().get_num_attribs()
 
 df = scale(df, cols_to_scale)
 

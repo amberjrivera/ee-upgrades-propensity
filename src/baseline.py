@@ -92,8 +92,6 @@ scaler = RobustScaler()
 df[cols_to_scale] = scaler.fit_transform(df[cols_to_scale])
 
 
-
-
 #COMPARE MODELS
 model_names  = [
            # "Logistic Regression",

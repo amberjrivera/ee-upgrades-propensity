@@ -11,7 +11,6 @@ for dimensionality reduction.
 The final model is then saved as a pickled file for future use.
 '''
 
-import pickle
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import Imputer, StandardScaler, CategoricalEncoder, FunctionTransformer
@@ -20,47 +19,46 @@ from sklearn.pipeline import Pipeline, FeatureUnion
 from sklearn.model_selection import train_test_split, KFold, cross_val_score
 from sklearn.grid_search import GridSearchCV
 from sklearn.ensemble import GradientBoostingClassifier
-from preprocessing import *
+from transforms import *
+from attributes import Attributes
 
 
-#CREATE PIPELINE
-preprocess = [('cleaning', Cleaning()),
-            ('imputation', CustomImpute()),
-            ('permits', Permits()),
-            ('engineering', Engineering())
-            ])
+#CREATE PIPELINE TO RECEIVE CLEAN, BALANCED FEATURE MATRIX
+num_attribs, cat_attribs, other_attribs = Attributes().get_attribs()
 
-numerical = [('selector', DFselector()),
-            ('imputer', Imputer(strategy='median')),
-            ('std_scaler', StandardScalar())
-            ]
+num_pipeline = Pipieline([
+        ('selector', DFselector(num_attribs)),
+        ('std_scaler', StandardScalar())
+    ])
 
-categorical = [('selector', DFselector()),
-              ('cat_encoder', CategoricalEncoder(encoding='ordinal')) #tinker
-              ]
+cat_pipeline = Pipeline([
+        ('selector', DFselector(cat_attribs)),
+        ('encoder', CategoricalEncoder(encoding='onehot'))
+    ])
 
-#TODO: Add in sub-pipeline for all other attributes, then fold into transform_pipeline
-# others = [
-#          ]
+other_pipeline = Pipeline([
+        ('selector', DFselector(other_attribs))
+    ])
 
-preprocess_pipeline = Pipeline(preprocess)
-num_pipeline = Pipeline(numerical)
-cat_pipeline = Pipeline(categorical)
-others_pipeline = Pipeline(others)
+
+
 transform_pipeline = FeatureUnion(transformer_list=[
-                    ('num_pipeline', num_pipeline),
-                    ('cat_pipeline', cat_pipeline),
-                    ('others_pipeline', others_pipeline)
-                    ])
+        ('num_pipeline', num_pipeline),
+        ('cat_pipeline', cat_pipeline),
+        ('others_pipeline', others_pipeline)
+    ])
 
 
-pipe = [('preprocess', preprocess_pipeline),
-             ('transform', transform_pipeline),
-             ('pca', pca),  #placeholder
-             ('model', model)
-             ]
+pipe = Pipeline([
+        ('transform', transform_pipeline),
+        ('pca', PCA()), #placeholder for dim reduction
+        ('classify', estimator)
+     ])
 
 
+
+
+# --------------------------------------
 #CREATE MODEL
 #load raw features data
 df = pd.read_csv('../data/city.csv')
@@ -69,7 +67,7 @@ df = pd.read_csv('../data/city.csv')
 df['assessor_id'] = df['assessor_id'].str[1:]
 
 # add labels
-preprocessing.add_labels(df)
+transforms.add_labels(df)
 
 #split out test data
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33)
