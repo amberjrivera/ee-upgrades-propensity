@@ -15,10 +15,11 @@ import pandas as pd
 import numpy as np
 from sklearn.preprocessing import Imputer, StandardScaler, OneHotEncoder, LabelBinarizer, LabelEncoder
 from sklearn.decomposition import PCA
+from sklearn.feature_selection import SelectKBest, f_classif
 from sklearn.pipeline import Pipeline, FeatureUnion
 from sklearn.model_selection import train_test_split, KFold, cross_val_score
-from sklearn.grid_search import GridSearchCV
-from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.grid_search import GridSearchCV, RandomizedSearchCV
+from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
 from transforms import add_labels, Preprocessing, BalanceClasses, DFselector
 from attributes import Attributes
 
@@ -43,22 +44,31 @@ transform_pipeline = FeatureUnion(transformer_list=[
 
 pipe = Pipeline([
         ('transform', transform_pipeline),
-        # ('reduce dim', PCA()), #placeholder. also feature_selection.SelectKBest()
-        ('classifier', GradientBoostingClassifier(
-            subsample=0.85, #try 0.6
-            n_estimators=600, #try 200, 400
-            min_weight_fraction_leaf=0.01,
-            min_samples_split=15,
-            min_samples_leaf=30,
-            min_impurity_decrease=0.01,
-            max_leaf_nodes=None, #try 10, 15
-            max_features=15,
-            max_depth=12,
-            learning_rate=0.05
-            )
+        ('reduce_dim', SelectKBest(f_classif)),
+        ('classify', RandomForestClassifier(
+            bootstrap=True,
+            criterion='entropy',
+            max_depth=5,
+            max_features='auto',
+            min_samples_leaf=20,
+            min_samples_split=10,
+            n_estimators=20,
+            n_jobs=2
+        )
+        # ('classify', GradientBoostingClassifier(
+        #     subsample=0.85, #try 0.6
+        #     n_estimators=600, #try 200, 400
+        #     min_weight_fraction_leaf=0.01,
+        #     min_samples_split=15,
+        #     min_samples_leaf=30,
+        #     min_impurity_decrease=0.01,
+        #     max_leaf_nodes=None, #try 10, 15
+        #     max_features=15,
+        #     max_depth=12,
+        #     learning_rate=0.05
+        # )
         )
      ])
-
 
 
 

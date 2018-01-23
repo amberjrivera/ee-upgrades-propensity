@@ -7,7 +7,6 @@ into Sklearn's Pipeline constructor.
 '''
 import pandas as pd
 import numpy as np
-from sklearn.preprocessing import Imputer, StandardScaler, RobustScaler, LabelBinarizer
 from sklearn.base import TransformerMixin, BaseEstimator
 from attributes import Attributes
 

@@ -6,7 +6,6 @@ import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
-from sklearn.metrics import f1_score, classification_report
 from sklearn.linear_model import LogisticRegression
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.naive_bayes import GaussianNB
@@ -203,7 +202,7 @@ cv_folds = 3
 # print("Most important features found on training set:")
 # print(clf.feature_importances_)
 #
-# --------------------
+# # --------------------
 # clf_two = RandomizedSearchCV(gb, param_distributions=parameters, n_iter=100, \
 # scoring='f1', n_jobs=2, cv=None, refit=True)
 #
