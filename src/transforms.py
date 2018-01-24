@@ -8,6 +8,7 @@ into Sklearn's Pipeline constructor.
 import pandas as pd
 import numpy as np
 from sklearn.base import TransformerMixin, BaseEstimator
+from sklearn.preprocessing import RobustScaler
 from attributes import Attributes
 
 
@@ -134,15 +135,24 @@ class Preprocessing(object):
         df.drop(columns=['update_date', 'last_sale_date'], inplace=True)
 
         # Handle sparse permits data #TODO improve method
-            #Quick: total permits ever
-            #Good: num_permits_since_purchase
-            #Better: By category, num_permits_since_purchase
-            #Best:
+        #Quick: total permits ever
         permit_cols = attribs.get_permit_cols()
 
-        #Quick: total permits ever
         df['permits'] = (df[permit_cols].notnull()).sum(1)
         df.drop(columns=permit_cols, inplace=True)
+
+        #Good: num_permits_since_purchase
+        #Better: By category, num_permits_since_purchase
+        # p = Permits()
+        # permits_dict = p.permits_dict
+        # meta_dict = p.meta_dict()
+        #
+        # for key, values in permits_dict.items():
+        #     for val in values:
+        #         if (df[val]) > df['last_sale_date'].dt.year:
+        #             meta_dict[key] += 1
+        #     turn key into col header & populate with count (val from meta_dict)
+        # df.drop(columns=permit_cols, inplace=True)
 
 
         ### IMPUTATION
@@ -160,7 +170,7 @@ class Preprocessing(object):
         inplace=True)
 
         # Fill 'Unknown' (categorical)
-        df.replace({'ac_type': np.nan}, {'ac_type': 'UNKNOWN'}, inplace=True)
+        # df.replace({'ac_type': np.nan}, {'ac_type': 'UNKNOWN'}, inplace=True)
 
         df.replace({'zillow_neighborhood': np.nan}, \
         {'zillow_neighborhood': 'Unknown'}, inplace=True)
@@ -169,7 +179,7 @@ class Preprocessing(object):
          inplace=True)
 
         # Fill mode (categorical)
-        cols = ['exterior_wall_type', 'frame_type', 'heating_type', \
+        cols = ['ac_type', 'exterior_wall_type', 'frame_type', 'heating_type', \
         'interior_wall_type', 'land_use']
         for col in cols:
             mode = df[col].mode()[0]

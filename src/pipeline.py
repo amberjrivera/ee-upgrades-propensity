@@ -15,6 +15,7 @@ import pandas as pd
 import numpy as np
 from sklearn.preprocessing import Imputer, StandardScaler, OneHotEncoder, LabelBinarizer, LabelEncoder
 from sklearn.decomposition import PCA
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.feature_selection import SelectKBest, f_classif
 from sklearn.pipeline import Pipeline, FeatureUnion
 from sklearn.model_selection import train_test_split, KFold, cross_val_score
@@ -44,17 +45,18 @@ transform_pipeline = FeatureUnion(transformer_list=[
 
 pipe = Pipeline([
         ('transform', transform_pipeline),
-        ('reduce_dim', SelectKBest(f_classif)),
+        # ('reduce_dim', SelectKBest(f_classif)),
+        # ('reduce_dim', LinearDiscriminantAnalysis(solver='svd', n_components=20, store_covariance=True)),
         ('classify', RandomForestClassifier(
             bootstrap=True,
             criterion='entropy',
             max_depth=5,
-            max_features='auto',
+            max_features=50,
             min_samples_leaf=20,
             min_samples_split=10,
-            n_estimators=20,
+            n_estimators=200,
             n_jobs=2
-        )
+        ))
         # ('classify', GradientBoostingClassifier(
         #     subsample=0.85, #try 0.6
         #     n_estimators=600, #try 200, 400
@@ -67,9 +69,8 @@ pipe = Pipeline([
         #     max_depth=12,
         #     learning_rate=0.05
         # )
-        )
+        # )
      ])
-
 
 
 # --------------------------------------
