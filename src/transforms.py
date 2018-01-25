@@ -28,14 +28,20 @@ def add_labels(df):
     '''
 
     # Make list of addresses that have done any upgrade
-    positives = pd.read_csv('../data/Upgrade_Data.csv', usecols=[1], \
-    squeeze=True).str[1:].tolist()
-
-    positives = set(positives) #4864 homes in county
+    positives = set(pd.read_csv('../data/Upgrade_Data.csv', usecols=[1], \
+    squeeze=True).str[1:].tolist()) #4864 homes in county
 
     #make labels col based on membership in positives set
     df['labels'] = df.apply(lambda row: 1 if row['assessor_id'] in positives \
-    else 0, axis=1)  #9% of data is in positive class
+    else 0, axis=1)
+    #9% of data in positive class. Homes data only captures 1/3 of upgrades data.
+
+    # List of 2016 upgrades, for hindcasting
+    sixteens = set(pd.read_csv('../data/upgrades_2016.csv', usecols=[1], \
+    squeeze=True).str[1:].tolist())
+
+    df['2016_upgrade'] = df.apply(lambda row: 1 if row['assessor_id'] in \
+    sixteens else 0, axis=1) #92 homes with full data upgraded in 2016
 
     return df
 
@@ -55,15 +61,9 @@ class Preprocessing(object):
         ### CLEAN AND DROP
         attribs = Attributes()
 
-        #drop unique identiier (1)
-        df.drop(columns='assessor_id', inplace=True)
-
-        # drop PRIZM segments (3)
-        df.drop(columns=[
-            'prizm_premier',
-            'prizm_social_group',
-            'prizm_lifestage'
-            ], inplace=True)
+        # drop customer segmentation info (3) #tinker 
+        segment_cols = attribs.get_segment_cols()
+        df.drop(columns=segment_cols, inplace=True)
 
         # drop cols with data leakage (2)
         leak_cols = attribs.get_leak_cols()
@@ -217,8 +217,23 @@ class BalanceClasses(object):
         df.drop(df.query('labels == 0').sample(n=num_to_drop).index, \
         inplace=True)
 
+        # method = 'SMOTE'
+
+
         balanced = df
         return balanced
+
+
+def save_and_drop_ids(df):
+    '''
+    Function to save unique identifier, and latitude and longitude info for
+    geographic visualization later.
+    Then drop before trimming down the df for modeling.
+    '''
+    identify_df = df[['lat', 'lon', 'assessor_id', 'labels', '2016_upgrade']]
+    df.drop(columns=['lat', 'lon', 'labels','assessor_id', '2016_upgrade'], inplace=True)
+
+    return df, identify_df
 
 
 class DFselector(TransformerMixin, BaseEstimator):
@@ -238,17 +253,34 @@ class DFselector(TransformerMixin, BaseEstimator):
         return X[self.attribute_names].values
 
 
+def hindcast(df):
+    '''
+    Pass in identify_df matrix to prepare it for the demo map.
+    '''
+    # get rid of any homes that did NOT upgrade in 2016
+    df.drop(df[df['2016_upgrade'] != 1].index, inplace=True)
+
+    #TODO add corresponding y_pred labels by assessor_id
+
+    #write to csv to input into Google's My Maps for presentation
+    df.to_csv('../data/2016_hindcast.csv')
+    return df
+
+
 
 # -----------------------------------------
-# class CustomBinarizer(BaseEstimator, TransformerMixin):
-#     def __init__(self):
-#         pass
-#
-#     def fit(self, X, y=None):
-#         return self
-#
-#     def transform(self, X):
-#         return LabelBinarizer().fit(X).transform(X)
+class CustomBinarizer(BaseEstimator, TransformerMixin):
+    '''
+    In order to fold cleaning steps into the Pipeline, I'll need to write my own class to dummytize the categorical columns. Sklearn will release CategoricalEncoder in the next version, but in the meantime there isn't a great way to handle dummies inside of Pipeline when there is more than one categorical feature mixed in with numerical features in the dataset.
+    '''
+    def __init__(self):
+        pass
+
+    def fit(self, X, y=None):
+        return self
+
+    def transform(self, X):
+        return LabelBinarizer().fit(X).transform(X)
 
 class CustomImpute(object):
     '''TK

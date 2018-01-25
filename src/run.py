@@ -28,7 +28,10 @@ if __name__ == '__main__':
     balance = BalanceClasses()
     # balance = preprocessing.BalanceClasses(method=downsample, \
     # pos_class_percent=pos_percent)
-    data = balance.transform(df)
+    df = balance.transform(df)
+
+    # Save and drop identifying info
+    data, identity_df = save_and_drop_ids(df)
 
     # Split the data
     y = data.pop('labels')

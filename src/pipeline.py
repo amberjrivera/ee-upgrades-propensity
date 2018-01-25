@@ -26,6 +26,8 @@ from attributes import Attributes
 
 
 #CREATE PIPELINE TO RECEIVE CLEAN, BALANCED FEATURE MATRIX
+#Iterate: fold cleaning and balancing into the pipeline
+
 num_attribs, cat_attribs = Attributes().get_attribs()
 
 num_pipeline = Pipeline([
@@ -71,36 +73,3 @@ pipe = Pipeline([
         # )
         # )
      ])
-
-
-# --------------------------------------
-# #CREATE MODEL
-# #load raw features data
-# df = pd.read_csv('../data/city.csv')
-#
-# #Clean up unique identifier
-# df['assessor_id'] = df['assessor_id'].str[1:]
-#
-# # add labels
-# transforms.add_labels(df)
-#
-# #split out test data
-# X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33)
-#
-# #instantiate model - will swap out with final model I choose
-# model = GradientBoostingClassifier()
-#
-# #placeholder for any algorithmic dimensionality reduction I'll do
-# pca = PCA()
-#
-# #tune model - update once I choose best model and dim reduction
-# param_grid = {}
-# classifier = GridSearchCV(pipe, param_grid, scoring='f1_weighted', n_jobs=4, refit=True, cv=3,
-#
-# classifier.fit(X_train, y_train)
-#
-# # print out final score
-#
-# #pickle best model
-# with open('ee-upgrade-propensity-model.pkl', 'wb') as f:
-#     pickle.dump(classifier, f)
