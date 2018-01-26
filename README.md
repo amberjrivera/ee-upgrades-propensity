@@ -10,8 +10,8 @@ use machine learning to predict a household's propensity to install an energy ef
 * [pandas](https://pandas.pydata.org/) open source library for data analysis.
 * [NumPy](http://www.numpy.org/) library for scientific computing in Python.
 * [scikit-learn](http://scikit-learn.org/stable/index.html), a free software machine learning library for Python.
-* In particular, scikit-learn's [Pipeline constructor](URL to Gist I co-wrote).
-* [Matplotlib's Pyplot](https://matplotlib.org/api/pyplot_summary.html), [Seaborn](https://seaborn.pydata.org/index.html) and Google's [My Maps](https://support.google.com/mymaps/answer/3024396?co=GENIE.Platform%3DDesktop&hl=en) for visualization.
+* In particular, scikit-learn's [Pipeline constructor](https://gist.github.com/amberjrivera/8c5c145516f5a2e894681e16a8095b5c).
+* [matplotlib's Pyplot](https://matplotlib.org/api/pyplot_summary.html), [Seaborn](https://seaborn.pydata.org/index.html) and [Google](https://support.google.com/mymaps/answer/3024396?co=GENIE.Platform%3DDesktop&hl=en) for visualization.
 
 ## Contents
 1. [The Question and Motivations](#the-question-and-motivations)
@@ -38,17 +38,19 @@ I built a Preprocessing class to tidy up and flesh out the data before modeling.
 Given the time constraints, I handled missing values thoughtfully but bluntly. For numerical attributes, I filled with the median value of all non-null observations, except for a home's solar PV potential, which I filled with the mode (while there is likely diversity in the size, pitch and orientation of rooftops, homes are all located in the same 25 square mile geographic area). I filled all missing values in categorical attributes with their mode, except for `zillow_neighborhood`, which I filled with 'Unknown'.
 
 
-### Feature Engineering
+### Features
+There was a fair amount of collinearity in many of the numerical features, which tipped me off that I would need to do some regularization or choose an algorithm that would be robust to correlated features.
+
+<img src = "visuals/fund_num_corr_mat.png" alt="Collinearity of subset of numerical features.">
+
 I had what I suspected would be predictive information about homeowner permits, but it was sparse. To keep it, I created a summarizing feature for each home, `num_permits_since_purchase`. There is a lot more that could be done with this information, and I hope to extract more features from it in a future iteration of the analysis.
 
 As a proxy for measuring whether social influence is a factor in a home's likelihood to install a home energy upgrade, I created three spatial clustering features, `num_upgrades_subdivision`, `num_upgrades_parcel`, and `num_upgrades_zip`. For each home, these features count the number of homes in the same group that have already upgraded. Subdivision has the highest resolution of the three with 785 different categories, and serves as a good proxy for Census Block Group, while zip code has only a handful of groups. Later, I looked at feature importances to see which of these levels of grouping would be most predictive.
 
 ### Class Imbalance
-As mentioned, the classes were imbalanced with only 9% of the data in the positive class. In thinking and researching through the best way to handle this, I learned of diverging philosophies on the matter. There were two decisions to be made: method of balancing, and level of balancing. In my first pass, I chose to balance the classes to 75/25 majority/minority (has not upgraded; negative class / has upgraded; positive class).
+As mentioned, the classes were rather imbalanced with only 9% of the data in the positive class. In thinking and researching through the best way to handle this, I learned of diverging philosophies on the matter. There were two decisions to be made: method of balancing, and level of balancing. In my first pass, I chose to balance the classes to 75/25 majority/minority (has not upgraded; negative class / has upgraded; positive class).
 
 In the first pass, I simply dropped the number of majority class instances necessary to reach 75/25 balance, which left a much smaller dataset to train on, 6564 x 206. As I iterate on the model, I'll instead try bootstrapping from the minority class to preserve more of the training data, and will lever the percentage of the minority class to see how it impacts performance.
-
-*[visual TK: correlation matrix of the non-simulated numerical features.*
 
 
 ## Modeling and Results
@@ -79,7 +81,7 @@ One of the benefits of using `Pipeline` and `GridSearchCV` together is that you 
 
 I did this a bit by swapping in different methods for dimensionality reduction/feature selection, but that became less important when I selected the [Random Forest/Gradient Boosting] algorithm, which already does a good job of handling highly correlated attributes and high dimension datasets. In future iterations of the analysis, I'd like to swap out various imputation techniques for missing data, to see if there is any more performance to squeeze out of the algorithm.
 
-*[potential visual: performance comparison when undersampling the majority class versus SMOTE]*
+*[potential visual: performance comparison when undersampling the majority class vs boostrapping vs SMOTE]*
 
 
 Here's a map that demonstrates the model's performance. I backtested my model on historic data for 2016 to see how my predictions compared to reality.
@@ -88,7 +90,7 @@ Here's a map that demonstrates the model's performance. I backtested my model on
 
 
 ### Business Implications
-*[visual TK: compare profit curves of winning and runner-up classifiers]*
+*[visual TK: confusion matrix and profit curve]*
 
 
 ## Future Work
@@ -96,16 +98,17 @@ Here are some ideas for improving upon this project:
 - Try and compare more sophisticated imputation methods, such as plugging into the Zillow API to fill in missing sale date and sale price when predicting on new data.
 - Further engineer off of the permits features, encoding their most useful info into the dataset.
 - Find and incorporate relevant behavioral information for each household to improve performance.
-- Incorporate unsupervised techniques in the data exploration process to learn more about the relationships in the data.
-- In production, stand up two models and compare their performance predicting on new data, ongoing. I'd be curious to see how each of the balancing techniques I tried perform in the wild -- did bootstrapping introduce bias into the model, or does it still perform better than undersampling the majority class in the long run?
+- Incorporate unsupervised techniques to see whether there are any natural patterns or clusters among the data.
+- In production, stand up two models and compare their performance predicting on new data, ongoing. I'd be curious to see how each of the balancing techniques I tried perform in the wild -- did bootstrapping or SMOTE improve performance at the cost of introducing bias into the model, or does it still perform better than undersampling the majority class in the long run?
 
 
 ## Acknowledgements
 - Official documentation for [pandas](https://pandas.pydata.org/pandas-docs/stable/) and [scikit-learn](http://scikit-learn.org/stable/documentation.html).
 - *["Python For Data Analysis, 2nd Edition"](http://shop.oreilly.com/product/0636920050896.do)* by William McKinney (O'Reilly). Copyright 2017.
 - *["Hands On Machine Learning with Scikit-Learn and TensorFlow"](http://shop.oreilly.com/product/0636920052289.do)* by Aurélien Géron (O'Reilly). Copyright 2017.
+- Batista, G., Prati, R. and Monard M. [A Study of the Behavior of Several Methods for Balancing Machine Learning Training Data.](http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.58.7757&rep=rep1&type=pdf)
 - Isaac Laughlin's [Pipeline how-to video.](https://www.youtube.com/watch?v=0UWXCAYn8rk)
-- A **big** thank you to Galvanize instructor [Elliot Cohen](https://github.com/Ecohen4), who served as advisor and cheerleader on this project.
+- A **big** thank you to Galvanize instructor [Elliot Cohen](https://github.com/Ecohen4), who served as advisor and cheerleader on this project, and to all of my instructors during the immersive.
 
 ## About Me
 I'm new to data science, but not to data analysis. My background is in modeling portfolio risk in the solar financing industry and advising on public policy based on market research and modeling. I'm available for contract data work, and seeking a position where I can program machine learning and other advanced analytics solutions in Python. I thrive in situations where people want to know the fundamental truth of their business, organization, or market as much as I do. Connect with me on [LinkedIn](www.linkedin.com/in/amberjrivera) or please [send me an email](<amberjrivera@gmail.com>) with any question, critique, or idea for this project!
