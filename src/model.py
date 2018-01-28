@@ -4,8 +4,9 @@
 
 import pandas as pd
 import numpy as np
+from sklearn.preprocessing import RobustScaler
 from sklearn.model_selection import train_test_split, cross_val_score
-from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
+from sklearn.model_selection import GridSearchCV, RandomizedSearchCV, StratifiedKFold
 from sklearn.linear_model import LogisticRegression
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.naive_bayes import GaussianNB
@@ -30,11 +31,17 @@ clean = Preprocessing()
 df = clean.transform(df)
 
 # Handle class imbalance
-# pos_percent = 0.25 #add functionality and tinker
-balance = BalanceClasses()
-# balance = preprocessing.BalanceClasses(method=downsample, \
-# pos_class_percent=pos_percent)
-data = balance.transform(df)
+pos_percent = 0.45 #add functionality and tinker
+balance = BalanceClasses(method='downsample', pos_percent=pos_percent)
+df = balance.transform(df)
+
+# Save and drop identifying info
+data, identity_df = save_and_drop_ids(df)
+
+# Scale numerical features
+cols_to_scale = Attributes().get_num_attribs()
+scaler = RobustScaler()
+data[cols_to_scale] = scaler.fit_transform(data[cols_to_scale])
 
 # Split the data
 y = data.pop('labels')
@@ -106,8 +113,16 @@ classifiers = [
     LogisticRegression(penalty='l1', tol=0.001),
     KNeighborsClassifier(n_neighbors=3),
     GaussianNB(),
-    DecisionTreeClassifier(max_depth=5, random_state=None),
-    RandomForestClassifier(max_depth=5, n_estimators=10, max_features=20, random_state=None),
+    DecisionTreeClassifier(max_depth=5, random_state=42),
+    RandomForestClassifier(
+        bootstrap=True,
+        criterion='entropy',
+        max_depth=5,
+        n_estimators=200,
+        max_features='auto',
+        random_state=42,
+        n_jobs=-1,
+        oob_score=False),
     ExtraTreesClassifier(n_estimators=10, criterion='entropy', max_features=10),
     GradientBoostingClassifier(
         subsample=0.85, #try 0.6
@@ -119,23 +134,28 @@ classifiers = [
         max_leaf_nodes=None, #try 10, 15
         max_features=15,
         max_depth=12,
-        learning_rate=0.05
+        learning_rate=0.05,
+        random_state=42
         ),
-    AdaBoostClassifier(random_state=None),
+    AdaBoostClassifier(random_state=42),
     LinearDiscriminantAnalysis(solver='eigen', shrinkage='auto', n_components=10),
     QuadraticDiscriminantAnalysis(reg_param=0.5, store_covariance=True),
     MLPClassifier(alpha=1, tol=0.001, random_state=None)
     ]
 
-cv_folds = 4
+cv_folds = StratifiedKFold(n_splits=4, random_state=42, shuffle=False) #so I can set a seed
 
 # Create summary dataframe "score board" to compare scores
-scores = pd.DataFrame(columns=['Models', 'precision', 'recall', 'f1'])
+scores = pd.DataFrame(columns=['Models', 'accuracy', 'precision', 'recall', 'f1'])
 scores['Models'] = model_names
 
 for model_name, clf in zip(model_names, classifiers):
     # For each cv_fold, train, predict, score the selected classifier
     # Compare models based on mean accuracy and mean f1_score
+
+    accuracy = round(cross_val_score(clf, X_train, y_train, cv=cv_folds, \
+    scoring='accuracy').mean(), 2)
+
     precision = round(cross_val_score(clf, X_train, y_train, cv=cv_folds, \
     scoring='precision').mean(), 2)
 
@@ -146,6 +166,7 @@ for model_name, clf in zip(model_names, classifiers):
     scoring='f1').mean(), 2)
 
     # Update the score board
+    scores.loc[scores['Models'] == model_name, 'accuracy'] = accuracy
     scores.loc[scores['Models'] == model_name, 'precision'] = precision
     scores.loc[scores['Models'] == model_name, 'recall'] = recall
     scores.loc[scores['Models'] == model_name, 'f1'] = f1_score

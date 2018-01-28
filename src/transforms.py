@@ -61,7 +61,7 @@ class Preprocessing(object):
         ### CLEAN AND DROP
         attribs = Attributes()
 
-        # drop customer segmentation info (3) #tinker 
+        # drop customer segmentation info (3) #tinker
         segment_cols = attribs.get_segment_cols()
         df.drop(columns=segment_cols, inplace=True)
 
@@ -77,7 +77,7 @@ class Preprocessing(object):
         null_cols = attribs.get_null_cols()
         df.drop(columns=null_cols, inplace=True)
 
-        # drop redundant features (72)
+        # drop redundant features (73)
         redundant_cols = attribs.get_redundant_cols()
         df.drop(columns=redundant_cols, inplace=True)
 
@@ -117,11 +117,11 @@ class Preprocessing(object):
         df['num_upgrades_parcel'] = \
         df['labels'].groupby(df['parcel_id']).transform('sum')
 
-        df['num_upgrades_subdivision'] = \
-        df['labels'].groupby(df['subdivision']).transform('sum')
-
-        df['num_upgrades_zip'] = \
-        df['labels'].groupby(df['zip']).transform('sum')
+        # df['num_upgrades_subdivision'] = \
+        # df['labels'].groupby(df['subdivision']).transform('sum')
+        #
+        # df['num_upgrades_zip'] = \
+        # df['labels'].groupby(df['zip']).transform('sum')
 
         df.drop(columns=['parcel_id', 'subdivision', 'zip'], inplace=True)
 
@@ -166,11 +166,8 @@ class Preprocessing(object):
         df['pv_potential_kwhr_yr'].fillna(df['pv_potential_kwhr_yr'].mode()[0],\
          inplace=True)
 
-        df['pv_potential_watts'].fillna(df['pv_potential_watts'].mode()[0], \
-        inplace=True)
-
-        # Fill 'Unknown' (categorical)
-        # df.replace({'ac_type': np.nan}, {'ac_type': 'UNKNOWN'}, inplace=True)
+        # df['pv_potential_watts'].fillna(df['pv_potential_watts'].mode()[0], \
+        # inplace=True)
 
         df.replace({'zillow_neighborhood': np.nan}, \
         {'zillow_neighborhood': 'Unknown'}, inplace=True)
@@ -195,33 +192,56 @@ class Preprocessing(object):
 
 class BalanceClasses(object):
     '''
-    Take in non-null feature matrix (Pandas dataframe) including target labels.
+    Take in non-null feature matrix, X_train (Pandas dataframe), and target labels, y_train (Pandas dataframe).
+
     Balance positive and negative classes.
 
-    Possible methods are...TK
+    Possible methods are 'downsample', 'bootstrap', and 'SMOTE'.
 
-    Return processed Pandas dataframe.
+    Return balanced data as a numpy array.
     '''
-    def __init__(self, pos_class_percent=0.25):
-    # def __init__(self, method='downsample', pos_class_percent=0.25):
-    # TODO add ability to specify method, and change desired % positive class
-        # self.pos_percent = pos_class_percent
-        # self.method = method
-        pass
+    def __init__(self, pos_percent=0.45, method='bootstrap'):
+        self.pos_percent = pos_percent
+        self.method = method
 
-    def transform(self, df):
-        # method='downsample'
-        num_pos = len(df[df['labels'] == 1])
-        num_neg = df.shape[0] - num_pos
-        num_to_drop = int((num_neg*.79) - num_pos) #25% pos class - tinker
-        df.drop(df.query('labels == 0').sample(n=num_to_drop).index, \
-        inplace=True)
+    def transform(self, X_train, y_train=None):
+        if y_train:
+            self.pos_num = y_train.value_counts()[1] #1631 / 1093
+        else:
+            self.pos_num = X_train['labels'].value_counts()[1]
 
-        # method = 'SMOTE'
+        self.pos_target = int(X_train.shape[0] * self.pos_percent)
 
+        if self.method =='downsample':
+            self.neg_num = X_train.shape[0] - self.pos_num
+            self.num_to_drop = int((self.neg_num - (self.pos_num * (1-self.pos_percent) / self.pos_percent)))
 
-        balanced = df
+            X_train.drop(X_train.query('labels == 0').sample(n=self.num_to_drop).index, \
+            inplace=True)
+
+        elif self.method =='bootstrap':
+            samples_needed = int(self.pos_target - self.pos_num)
+            pos_idx = y_train.index[y_train == 1].tolist()
+
+            # pos_rows = df[df['labels'] == 1]
+
+            new_data = pos_rows.sample(samples_needed, replace=True, random_state=42, axis=0)
+
+            df.append(new_data)  #append new data into dataset
+            df = df.sample(frac=1).reset_index(drop=True) #shuffle it
+
+        # elif: method == 'SMOTE':
+
+        #else: error
+
+        balanced = X_train
         return balanced
+
+
+
+# def split(df):
+#     '''
+#     Custom function to split X and y into training and test sets.
 
 
 def save_and_drop_ids(df):
@@ -231,7 +251,8 @@ def save_and_drop_ids(df):
     Then drop before trimming down the df for modeling.
     '''
     identify_df = df[['lat', 'lon', 'assessor_id', 'labels', '2016_upgrade']]
-    df.drop(columns=['lat', 'lon', 'labels','assessor_id', '2016_upgrade'], inplace=True)
+
+    df.drop(columns=['lat', 'lon', 'assessor_id', '2016_upgrade'], inplace=True) #keep labels for y
 
     return df, identify_df
 

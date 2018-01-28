@@ -5,7 +5,7 @@ from sklearn.metrics import make_scorer, f1_score
 from sklearn.decomposition import PCA, NMF
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.feature_selection import SelectKBest
-from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
+from sklearn.model_selection import GridSearchCV, RandomizedSearchCV, StratifiedKFold
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier, AdaBoostClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.grid_search import GridSearchCV
@@ -24,10 +24,8 @@ if __name__ == '__main__':
     df = clean.transform(df)
 
     # Handle class imbalance
-    # pos_percent = 0.25 #add functionality and tinker
-    balance = BalanceClasses()
-    # balance = preprocessing.BalanceClasses(method=downsample, \
-    # pos_class_percent=pos_percent)
+    pos_percent = 0.45 #add functionality and tinker
+    balance = BalanceClasses(method='downsample', pos_percent=pos_percent)
     df = balance.transform(df)
 
     # Save and drop identifying info
@@ -38,37 +36,29 @@ if __name__ == '__main__':
     X = data
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33)
 
-# ---------------------------------------------------------
-    # Search for the best classifier and dim reduction
+# -----------------------------------------------
+    # Search for the best classifier
     pg =[
         {
             'classify': [RandomForestClassifier()],
-            'classify__bootstrap': [True], #True
+            # 'classify__bootstrap': [True], #True
             # 'classify__class_weight': [None],
             'classify__criterion': ['entropy'], #'gini'
-            'classify__max_depth': [5], #5 (6, 8)
-            'classify__max_features': ['auto'], #50
+            'classify__max_depth': [5, 15, 25, 35], #5 (6, 8)
+            'classify__max_features': ['auto', 25, 50], #50
             # 'classify__max_leaf_nodes': [None],
             # 'classify__min_impurity_decrease': [0.0],
             # 'classify__min_impurity_split': [None],
-            'classify__min_samples_leaf': [20],
-            'classify__min_samples_split': [10], #10
+            'classify__min_samples_leaf': [10, 20, 30],
+            'classify__min_samples_split': [5, 10, 15], #10
             # 'classify__min_weight_fraction_leaf': 0.0,
-            'classify__n_estimators': [20], #15, 20
-            'classify__n_jobs': [2] #1
+            'classify__n_estimators': [25, 50, 100, 200], #15, 20
+            'classify__n_jobs': [-1]
             # 'classify__oob_score': [False], #False
-            # 'classify__random_state': None,
+            'classify__random_state': [42], #None
             # 'classify__verbose': [0],
             # 'classify__warm_start': [False]
         },
-        # {
-        #     'reduce_dim': [PCA(), NMF()],
-        #     'reduce_dim__n_components': [2, 10, 20],
-        # },
-        # {
-        #     'reduce_dim': [SelectKBest()],
-        #     'reduce_dim__k': [2, 10, 20],
-        # }
         {
             'classify': [GradientBoostingClassifier()],
             # 'classify__criterion': ['friedman_mse'],
@@ -83,10 +73,10 @@ if __name__ == '__main__':
             'classify__min_samples_leaf':[30],
             'classify__min_samples_split': [15],
             'classify__min_weight_fraction_leaf': [0.01],
-            'classify__n_estimators': [600, 400], #80; try 200
+            'classify__n_estimators': [80, 200, 600], #80;
             # 'classify__presort': ['auto'],
             # 'classify__random_state': [None],
-            'classify__subsample': [0.85, 0.6], #1.0
+            'classify__subsample': [0.6, 0.85, 0.95], #1.0
             # 'classify__verbose': [0],
             # 'classify__warm_start': [False]
         },
@@ -108,39 +98,39 @@ if __name__ == '__main__':
     print(grid_search.best_params_)
 # ------------------------------------------------------
 
-    # Fit and score a training model
-    # model = pipe.fit(X_train, y_train)
-    #
-    # cv_folds = 4
-    #
-    # precision = round(cross_val_score(model, X_train, y_train, cv=cv_folds, \
-    # scoring='precision').mean(), 2)
-    #
-    # recall = round(cross_val_score(model, X_train, y_train, cv=cv_folds, \
-    # scoring='recall').mean(), 2)
-    #
-    # f1_weighted = round(cross_val_score(model, X_train, y_train, cv=cv_folds, \
-    # scoring='f1_weighted').mean(), 2)
-    #
-    # print("Average scores found in CV were Precision: {0}, Recall: {1}, f1_weighted: {2} .".format(precision, recall, f1_weighted))
-    # print("Most important features found on training set:")
-    # # print(pipe.steps[2][1].feature_importances_)
-    #
-    # importances = [(score, name) for name, score in zip(X_train.columns, pipe.steps[1][1].feature_importances_)]
-    #
-    #
-    # importances.sort(key=lambda tup: tup[0])
-    # importances.reverse()
-    # print(list(importances)[0:12])
+    Fit and score a training model
+    model = pipe.fit(X_train, y_train)
 
-    # # Score the FINAL model
-    # clf = pipe.fit(X_train, y_train)
-    # print("Model is fit and ready to predict.")
-    #
-    # # Score the (FINAL) model
-    # y_pred = clf.predict(X_test)
-    # print("Final results:)
-    # print(classification_report(y_test, y_pred))
+    cv_folds = StratifiedKFold(n_splits=4, random_state=42, shuffle=False) #so I can set a seed
+
+    precision = round(cross_val_score(model, X_train, y_train, cv=cv_folds, \
+    scoring='precision').mean(), 2)
+
+    recall = round(cross_val_score(model, X_train, y_train, cv=cv_folds, \
+    scoring='recall').mean(), 2)
+
+    f1_weighted = round(cross_val_score(model, X_train, y_train, cv=cv_folds, \
+    scoring='f1_weighted').mean(), 2)
+
+    print("Average scores found in CV were Precision: {0}, Recall: {1}, f1_weighted: {2} .".format(precision, recall, f1_weighted))
+    print("Most important features found on training set:")
+    # print(pipe.steps[2][1].feature_importances_)
+
+    importances = [(score, name) for name, score in zip(X_train.columns, pipe.steps[1][1].feature_importances_)]
 
 
-    # Pickle and save FINAL model
+    importances.sort(key=lambda tup: tup[0])
+    importances.reverse()
+    print(list(importances)[0:12])
+
+    # Score the FINAL model
+    clf = pipe.fit(X_train, y_train)
+    print("Model is fit and ready to predict.")
+
+    # Score the (FINAL) model
+    y_pred = clf.predict(X_test)
+    print("Final results:)
+    print(classification_report(y_test, y_pred))
+
+
+    Pickle and save FINAL model
