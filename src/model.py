@@ -31,9 +31,9 @@ clean = Preprocessing()
 df = clean.transform(df)
 
 # Handle class imbalance
-pos_percent = 0.45 #add functionality and tinker
-balance = BalanceClasses(method='downsample', pos_percent=pos_percent)
-df = balance.transform(df)
+# pos_percent = 0.45
+# balance = BalanceClasses(method='downsample', pos_percent=pos_percent)
+# df = balance.transform(df)
 
 # Save and drop identifying info
 data, identity_df = save_and_drop_ids(df)
@@ -46,7 +46,7 @@ data[cols_to_scale] = scaler.fit_transform(data[cols_to_scale])
 # Split the data
 y = data.pop('labels')
 X = data
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.30)
 # -----------------------------
 
 # #CLEAN AND GET TO X

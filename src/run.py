@@ -7,9 +7,10 @@ from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.feature_selection import SelectKBest
 from sklearn.model_selection import GridSearchCV, RandomizedSearchCV, StratifiedKFold
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier, AdaBoostClassifier
+from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
 from sklearn.linear_model import LogisticRegression
 from sklearn.grid_search import GridSearchCV
-from transforms import add_labels, Preprocessing, BalanceClasses, DFselector
+from transforms import add_labels, Preprocessing, BalanceClasses, save_and_drop_ids, DFselector
 from pipeline import pipe
 
 
@@ -24,7 +25,7 @@ if __name__ == '__main__':
     df = clean.transform(df)
 
     # Handle class imbalance
-    pos_percent = 0.45 #add functionality and tinker
+    pos_percent = 0.45
     balance = BalanceClasses(method='downsample', pos_percent=pos_percent)
     df = balance.transform(df)
 
@@ -53,9 +54,9 @@ if __name__ == '__main__':
             'classify__min_samples_split': [5, 10, 15], #10
             # 'classify__min_weight_fraction_leaf': 0.0,
             'classify__n_estimators': [25, 50, 100, 200], #15, 20
-            'classify__n_jobs': [-1]
+            'classify__n_jobs': [-1],
             # 'classify__oob_score': [False], #False
-            'classify__random_state': [42], #None
+            'classify__random_state': [42] #None
             # 'classify__verbose': [0],
             # 'classify__warm_start': [False]
         },
@@ -76,61 +77,60 @@ if __name__ == '__main__':
             'classify__n_estimators': [80, 200, 600], #80;
             # 'classify__presort': ['auto'],
             # 'classify__random_state': [None],
-            'classify__subsample': [0.6, 0.85, 0.95], #1.0
+            'classify__subsample': [0.9, 0.95, 0.975], #1.0
             # 'classify__verbose': [0],
             # 'classify__warm_start': [False]
         },
-
         ]
 
-    # GridSearch for for the best estimator
-    my_f1_scorer = make_scorer(f1_score, pos_label=1, average='binary')
-    grid_search = GridSearchCV(pipe, param_grid=pg, cv=3, scoring='f1')
+    # GridSearch for the best estimator (stratified built-in)
+    # my_f1_scorer = make_scorer(f1_score, pos_label=1, average='binary')
+    grid_search = GridSearchCV(pipe, param_grid=pg, cv=4, scoring='recall') #'f1'
     grid_search.fit(X_train, y_train)
 
     # print results:
     print("Best estimator found in search:")
     print(grid_search.best_estimator_)
 
-    print("Best f1 score found in search was {}.".format(grid_search.best_score_))
+    print("Best recall score found in search was {}.".format(grid_search.best_score_))
 
     print("Best parameters found on training set:")
     print(grid_search.best_params_)
 # ------------------------------------------------------
 
-    Fit and score a training model
-    model = pipe.fit(X_train, y_train)
-
-    cv_folds = StratifiedKFold(n_splits=4, random_state=42, shuffle=False) #so I can set a seed
-
-    precision = round(cross_val_score(model, X_train, y_train, cv=cv_folds, \
-    scoring='precision').mean(), 2)
-
-    recall = round(cross_val_score(model, X_train, y_train, cv=cv_folds, \
-    scoring='recall').mean(), 2)
-
-    f1_weighted = round(cross_val_score(model, X_train, y_train, cv=cv_folds, \
-    scoring='f1_weighted').mean(), 2)
-
-    print("Average scores found in CV were Precision: {0}, Recall: {1}, f1_weighted: {2} .".format(precision, recall, f1_weighted))
-    print("Most important features found on training set:")
-    # print(pipe.steps[2][1].feature_importances_)
-
-    importances = [(score, name) for name, score in zip(X_train.columns, pipe.steps[1][1].feature_importances_)]
-
-
-    importances.sort(key=lambda tup: tup[0])
-    importances.reverse()
-    print(list(importances)[0:12])
-
-    # Score the FINAL model
-    clf = pipe.fit(X_train, y_train)
-    print("Model is fit and ready to predict.")
-
-    # Score the (FINAL) model
-    y_pred = clf.predict(X_test)
-    print("Final results:)
-    print(classification_report(y_test, y_pred))
-
-
-    Pickle and save FINAL model
+    # Fit and score a training model
+    # model = pipe.fit(X_train, y_train)
+    #
+    # cv_folds = StratifiedKFold(n_splits=4, random_state=42, shuffle=False) #so I can set a seed
+    #
+    # precision = round(cross_val_score(model, X_train, y_train, cv=cv_folds, \
+    # scoring='precision').mean(), 2)
+    #
+    # recall = round(cross_val_score(model, X_train, y_train, cv=cv_folds, \
+    # scoring='recall').mean(), 2)
+    #
+    # f1_weighted = round(cross_val_score(model, X_train, y_train, cv=cv_folds, \
+    # scoring='f1_weighted').mean(), 2)
+    #
+    # print("Average scores found in CV were Precision: {0}, Recall: {1}, f1_weighted: {2} .".format(precision, recall, f1_weighted))
+    # print("Most important features found on training set:")
+    # # print(pipe.steps[2][1].feature_importances_)
+    #
+    # importances = [(score, name) for name, score in zip(X_train.columns, pipe.steps[1][1].feature_importances_)]
+    #
+    #
+    # importances.sort(key=lambda tup: tup[0])
+    # importances.reverse()
+    # print(list(importances)[0:12])
+    #
+    # # Score the FINAL model
+    # clf = pipe.fit(X_train, y_train)
+    # print("Model is fit and ready to predict.")
+    #
+    # # Score the (FINAL) model
+    # y_pred = clf.predict(X_test)
+    # print("Final results:)
+    # print(classification_report(y_test, y_pred))
+    #
+    #
+    # Pickle and save FINAL model
