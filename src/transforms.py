@@ -1,15 +1,15 @@
 '''
-A set of transform classes to handle classifier preprocessing tasks.
+A set of transformations to handle classifier preprocessing tasks.
 Clean, impute, engineer the raw data to prepare it for modeling.
-*IN PROGRESS*
-All functions will eventually be written as classes in order to feed
-into Sklearn's Pipeline constructor.
 '''
 import pandas as pd
 import numpy as np
-from sklearn.base import TransformerMixin, BaseEstimator
-from sklearn.preprocessing import RobustScaler
+import pickle
 from attributes import Attributes
+from imblearn.over_sampling import RandomOverSampler, SMOTE
+from imblearn.under_sampling import RandomUnderSampler
+from sklearn.metrics import confusion_matrix, classification_report
+from sklearn.base import TransformerMixin, BaseEstimator
 
 
 def add_labels(df):
@@ -31,22 +31,45 @@ def add_labels(df):
     positives = set(pd.read_csv('../data/Upgrade_Data.csv', usecols=[1], \
     squeeze=True).str[1:].tolist()) #4864 homes in county
 
-    #make labels col based on membership in positives set
+    # Make labels col based on membership in positives set
     df['labels'] = df.apply(lambda row: 1 if row['assessor_id'] in positives \
-    else 0, axis=1)
-    #9% of data in positive class. Homes data only captures 1/3 of upgrades data.
+    else 0, axis=1) #9% of data in positive class.
 
-    # List of 2016 upgrades, for hindcasting
+    # # List of 2016 upgrades, for hindcasting
     sixteens = set(pd.read_csv('../data/upgrades_2016.csv', usecols=[1], \
     squeeze=True).str[1:].tolist())
 
-    df['2016_upgrade'] = df.apply(lambda row: 1 if row['assessor_id'] in \
+    df['labels_backtest'] = df.apply(lambda row: 1 if row['assessor_id'] in \
     sixteens else 0, axis=1) #92 homes with full data upgraded in 2016
+
+    # drop unique ID
+    df.drop(columns='assessor_id', inplace=True)
 
     return df
 
 
-# class Preprocessing(object, pd.DataFrame):
+def extract_bt_df(df):
+    '''
+    Function to sample out homes that either did or didn't upgrade in 2016,
+    before training, to later make backtest map.
+    '''
+    neg_idx = df.index[df['labels_backtest'] == 0]
+    pos_idx = df.index[df['labels_backtest'] == 1]
+    negatives = df.loc[neg_idx].sample(50)
+    positives = df.loc[pos_idx].sample(50)
+    together = [negatives, positives]
+    bt_df = pd.concat(together).sample(frac=1)
+    bt_df.drop(columns='labels', inplace=True)
+
+    df.drop(negatives.index, inplace=True)
+    df.drop(positives.index, inplace=True)
+    df.drop(columns=['lat', 'lon', 'labels_backtest'], inplace=True)
+
+    #write to csv for later predictions
+    bt_df.to_csv('../data/2016_backtest.csv')
+    return df
+
+
 class Preprocessing(object):
     '''
     Take in a feature matrix including target labels.
@@ -77,7 +100,7 @@ class Preprocessing(object):
         null_cols = attribs.get_null_cols()
         df.drop(columns=null_cols, inplace=True)
 
-        # drop redundant features (73)
+        # drop redundant features (74)
         redundant_cols = attribs.get_redundant_cols()
         df.drop(columns=redundant_cols, inplace=True)
 
@@ -110,18 +133,16 @@ class Preprocessing(object):
         # convert true/false to 1/0
         df['nrel_attached_garage'].astype(int, copy=False)
 
+        # combine full and half baths
+        df['num_baths'] = df['full_bath_count'] + (0.5 * df['half_bath_count'])
+        df.drop(columns=['full_bath_count', 'half_bath_count'], inplace=True)
+
 
         ### FEATURE ENGINEER
         # Spatial clustering
-        #TODO won't work in production bc engineering off of labels.
+        #TODO won't work in production b/c engineering off of labels.
         df['num_upgrades_parcel'] = \
         df['labels'].groupby(df['parcel_id']).transform('sum')
-
-        # df['num_upgrades_subdivision'] = \
-        # df['labels'].groupby(df['subdivision']).transform('sum')
-        #
-        # df['num_upgrades_zip'] = \
-        # df['labels'].groupby(df['zip']).transform('sum')
 
         df.drop(columns=['parcel_id', 'subdivision', 'zip'], inplace=True)
 
@@ -138,21 +159,8 @@ class Preprocessing(object):
         #Quick: total permits ever
         permit_cols = attribs.get_permit_cols()
 
-        df['permits'] = (df[permit_cols].notnull()).sum(1)
+        df['num_permits_since_purchase'] = (df[permit_cols].notnull()).sum(1)
         df.drop(columns=permit_cols, inplace=True)
-
-        #Good: num_permits_since_purchase
-        #Better: By category, num_permits_since_purchase
-        # p = Permits()
-        # permits_dict = p.permits_dict
-        # meta_dict = p.meta_dict()
-        #
-        # for key, values in permits_dict.items():
-        #     for val in values:
-        #         if (df[val]) > df['last_sale_date'].dt.year:
-        #             meta_dict[key] += 1
-        #     turn key into col header & populate with count (val from meta_dict)
-        # df.drop(columns=permit_cols, inplace=True)
 
 
         ### IMPUTATION
@@ -166,18 +174,13 @@ class Preprocessing(object):
         df['pv_potential_kwhr_yr'].fillna(df['pv_potential_kwhr_yr'].mode()[0],\
          inplace=True)
 
-        # df['pv_potential_watts'].fillna(df['pv_potential_watts'].mode()[0], \
-        # inplace=True)
-
+        # Fill 'Unknown'
         df.replace({'zillow_neighborhood': np.nan}, \
         {'zillow_neighborhood': 'Unknown'}, inplace=True)
 
-        df.replace({'roof_cover_type': np.nan}, {'roof_cover_type': 'UNKNOWN'},\
-         inplace=True)
-
         # Fill mode (categorical)
         cols = ['ac_type', 'exterior_wall_type', 'frame_type', 'heating_type', \
-        'interior_wall_type', 'land_use']
+        'interior_wall_type', 'land_use', 'roof_cover_type']
         for col in cols:
             mode = df[col].mode()[0]
             df[col].fillna(mode, inplace=True)
@@ -190,72 +193,89 @@ class Preprocessing(object):
         return processed
 
 
-class BalanceClasses(object):
+def backtest(path_to_model, data_path):
     '''
-    Take in non-null feature matrix, X_train (Pandas dataframe), and target labels, y_train (Pandas dataframe).
-
-    Balance positive and negative classes.
-
-    Possible methods are 'downsample', 'bootstrap', and 'SMOTE'.
-
-    Return balanced data as a numpy array.
+    Function to predict on 100 homes from 2016, for backtest map.
     '''
-    def __init__(self, pos_percent=0.45, method='bootstrap'):
-        self.pos_percent = pos_percent
-        self.method = method
+    # get 100 observations held out for backtesting
+    bt_df = pd.read_csv(data_path, index_col=0)
+    map_df = bt_df.loc[:,['lat', 'lon', 'labels_backtest']]
 
-    def transform(self, X_train, y_train=None):
-        if y_train:
-            self.pos_num = y_train.value_counts()[1] #1631 / 1093
-        else:
-            self.pos_num = X_train['labels'].value_counts()[1]
+    new_data = bt_df.drop(columns=['lat', 'lon'])
+    y = new_data.pop('labels_backtest')
+    X = new_data
 
-        self.pos_target = int(X_train.shape[0] * self.pos_percent)
+    #unpickle model and predict
+    with open(path_to_model, 'rb') as f:
+        model = pickle.load(f)
 
-        if self.method =='downsample':
-            self.neg_num = X_train.shape[0] - self.pos_num
-            self.num_to_drop = int((self.neg_num - (self.pos_num * (1-self.pos_percent) / self.pos_percent)))
+    y_pred = model.predict(X)
+    tn, fp, fn, tp = confusion_matrix(y, y_pred).ravel()
+    print("TP: {}".format(tp))
+    print("FP: {}".format(fp))
+    print("FN: {}".format(fn))
+    print("TN: {}".format(tn))
+    print(classification_report(y, y_pred))
 
-            X_train.drop(X_train.query('labels == 0').sample(n=self.num_to_drop).index, \
-            inplace=True)
+    map_df['predictions'] = y_pred
+    map_df.to_csv('../data/2016_backtest_results.csv')
 
-        elif self.method =='bootstrap':
-            samples_needed = int(self.pos_target - self.pos_num)
-            pos_idx = y_train.index[y_train == 1].tolist()
-
-            # pos_rows = df[df['labels'] == 1]
-
-            new_data = pos_rows.sample(samples_needed, replace=True, random_state=42, axis=0)
-
-            df.append(new_data)  #append new data into dataset
-            df = df.sample(frac=1).reset_index(drop=True) #shuffle it
-
-        # elif: method == 'SMOTE':
-
-        #else: error
-
-        balanced = X_train
-        return balanced
+    return None
 
 
+def balance(X_train, y_train, method):
+    if method == 'downsample':
+        # Random downsample to balance classes
+        sampler = RandomUnderSampler(random_state=42, ratio='auto', replacement=False, return_indices=True)
 
-# def split(df):
-#     '''
-#     Custom function to split X and y into training and test sets.
+        X_train_res, y_train_res, idx_res = sampler.fit_sample(X_train, y_train)
+
+    if method == 'ros':
+        # Random oversample to balance classes
+        sampler = RandomOverSampler(random_state=42, ratio='auto')
+
+        X_train_res, y_train_res = sampler.fit_sample(X_train, y_train)
+
+    if method == 'SMOTE':
+        # Use SMOTE to over sample to balance classes
+        sampler = SMOTE(random_state=42, ratio='auto', n_jobs=-1)
+
+        X_train_res, y_train_res = sampler.fit_sample(X_train, y_train)
+
+        idx_res = None
+
+    return X_train_res, y_train_res, idx_res
 
 
-def save_and_drop_ids(df):
-    '''
-    Function to save unique identifier, and latitude and longitude info for
-    geographic visualization later.
-    Then drop before trimming down the df for modeling.
-    '''
-    identify_df = df[['lat', 'lon', 'assessor_id', 'labels', '2016_upgrade']]
+def expected_value(y_test, y_pred, y_probs, num_jobs=500):
+    # everything in NumPy
+    y_test = np.array(y_test)
 
-    df.drop(columns=['lat', 'lon', 'assessor_id', '2016_upgrade'], inplace=True) #keep labels for y
+    #sort the indices
+    idx_s = np.argsort(y_probs)[::-1]
+    y_probs = y_probs[idx_s]
+    y_pred = y_pred[idx_s]
+    y_test = y_test[idx_s]
 
-    return df, identify_df
+    # take the top n probable, based on numbers of jobs expected
+    n = num_jobs
+    y_probs_n = y_probs[:n]
+    y_pred_n = y_pred[:n]
+    y_test_n = y_test[:n]
+    print("After taking the top n...")
+    print(y_probs_n.shape, y_pred_n.shape, y_test_n.shape)
 
+    # Get number of TP and FP in top n probabilities
+    numPP = y_pred_n.sum()
+    TP = y_test_n * y_pred_n
+    numTP = TP.sum()
+    numFP = numPP - numTP
+    print("\nTP: {0}, FP: {1}.".format(numTP, numFP))
+    print("There are {0} positives predictions.".format(numPP))
+    print("There are {0} TP in the predictions".format(numTP))
+    print("There are {0} FP in the predictions".format(numFP))
+
+    return numTP, numFP
 
 class DFselector(TransformerMixin, BaseEstimator):
     '''
@@ -272,194 +292,3 @@ class DFselector(TransformerMixin, BaseEstimator):
 
     def transform(self, X):
         return X[self.attribute_names].values
-
-
-def hindcast(df):
-    '''
-    Pass in identify_df matrix to prepare it for the demo map.
-    '''
-    # get rid of any homes that did NOT upgrade in 2016
-    df.drop(df[df['2016_upgrade'] != 1].index, inplace=True)
-
-    #TODO add corresponding y_pred labels by assessor_id
-
-    #write to csv to input into Google's My Maps for presentation
-    df.to_csv('../data/2016_hindcast.csv')
-    return df
-
-
-
-# -----------------------------------------
-class CustomBinarizer(BaseEstimator, TransformerMixin):
-    '''
-    In order to fold cleaning steps into the Pipeline, I'll need to write my own class to dummytize the categorical columns. Sklearn will release CategoricalEncoder in the next version, but in the meantime there isn't a great way to handle dummies inside of Pipeline when there is more than one categorical feature mixed in with numerical features in the dataset.
-    '''
-    def __init__(self):
-        pass
-
-    def fit(self, X, y=None):
-        return self
-
-    def transform(self, X):
-        return LabelBinarizer().fit(X).transform(X)
-
-class CustomImpute(object):
-    '''TK
-    Custom class to handle missing vals in AC_type and roof_cover_type.
-    '''
-    pass
-
-
-def clean_and_drop(df): # 18406 x 239-->17351 x 116 (nested cols)
-    '''
-    Clean up the raw data (Pandas dataframe).
-
-    Parameters
-    ----------
-    df :  Loaded and labeled df
-
-    Returns
-    ----------
-    df :  cleaned up feature matrix
-    '''
-    #drop unique identiier
-    df.drop(columns='assessor_id', inplace=True)
-
-    #drop PRIZM segments (3)
-    df.drop(columns=[
-        'prizm_premier',
-        'prizm_social_group',
-        'prizm_lifestage'
-        ], inplace=True)
-
-    # drop cols with data leakage (2)
-    leak_cols = Attributes().get_leak_cols()
-    df.drop(columns=leak_cols, inplace=True)
-
-    # drop rows with leakage
-    df.drop(df[df.year_built == 2017].index, inplace=True)
-    df.drop(df[df.effective_year_built == 2017].index, inplace=True)
-
-    # drop cols with too many nulls (28)
-    null_cols = Attributes().get_null_cols()
-    df.drop(columns=null_cols, inplace=True)
-
-    # drop redundant features (72)
-    redundant_cols = Attributes().get_redundant_cols()
-    df.drop(columns=redundant_cols, inplace=True)
-
-    # drop irrelevant features (18)
-    irrelevant_cols = Attributes().get_irrelevant_cols()
-    df.drop(columns=irrelevant_cols, inplace=True)
-
-    # Drop 1050 rows without sale_date or sale_price (same set)
-    df.dropna(subset=['last_sale_price', 'last_sale_date'], inplace=True)
-
-    #Remap buidling_condition (misspelling intentional)
-    df.replace({'buidling_condition':{
-        'LOW':1,
-        'FAIR':2,
-        'AVERAGE':3,
-        'AVERAGE +':4,
-        'AVERAGE ++':5,
-        'GOOD':6,
-        'GOOD +':7,
-        'GOOD ++':8,
-        'VERY GOOD':9,
-        'VERY GOOD +':10,
-        'VERY GOOD ++':11,
-        'EXCELLENT':12,
-        'EXCELLENT +':13,
-        'EXCELLENT++':14,
-        'EXCEPTIONAL 1':15}
-        }, inplace=True)
-
-    return df
-
-
-def feature_engineer(df): #17351 x 116 --> 17351 x 81
-    # Spatial clustering
-    df['num_upgrades_parcel'] = \
-    df['labels'].groupby(df['parcel_id']).transform('sum')
-
-    df['num_upgrades_subdivision'] = \
-    df['labels'].groupby(df['subdivision']).transform('sum')
-
-    df['num_upgrades_zip'] = \
-    df['labels'].groupby(df['zip']).transform('sum')
-
-    df.drop(columns=['parcel_id', 'subdivision', 'zip'], inplace=True)
-
-    # Days since last sale
-    df['update_date'] = pd.to_datetime(df['update_date'])
-    df['last_sale_date'] = pd.to_datetime(df['last_sale_date'])
-
-    df['time_since_sale'] = (df['update_date'] - df['last_sale_date']).dt.days
-
-    df.drop(columns=['update_date', 'last_sale_date'], inplace=True)
-
-
-    # Handle sparse permits data
-        #Quick: total permits ever
-        #Good: num_permits_since_purchase
-        #Better: By category, num_permits_since_purchase
-        #Best:
-    permit_cols = Attributes().get_permit_cols()
-
-    df['permits'] = (df[permit_cols].notnull()).sum(1)
-    df.drop(columns=permit_cols, inplace=True)
-
-    return df
-
-
-def impute(df):
-    # Fill median
-    df['acres'].fillna(df['acres'].median(), inplace=True)
-
-    df['census_income_median'].fillna(df['census_income_median'].median(), \
-    inplace=True)
-
-    # Fill mode
-    df['pv_potential_kwhr_yr'].fillna(df['pv_potential_kwhr_yr'].mode()[0], \
-    inplace=True)
-
-    df['pv_potential_watts'].fillna(df['pv_potential_watts'].mode()[0], \
-    inplace=True)
-
-    # Fill 'Unknown'
-    df.replace({'ac_type': np.nan}, {'ac_type': 'UNKNOWN'}, inplace=True)
-
-    df.replace({'zillow_neighborhood': np.nan}, \
-    {'zillow_neighborhood': 'Unknown'}, inplace=True)
-
-    df.replace({'roof_cover_type': np.nan}, {'roof_cover_type': 'UNKNOWN'}, \
-    inplace=True)
-
-    return df
-
-
-def cat_impute(df, cols):
-    '''
-    Fill mode on specified, categorical, columns.
-    '''
-    # cols = ['exterior_wall_type', 'frame_type', 'heating_type',
-    # 'interior_wall_type', 'land_use']
-    for col in cols:
-        mode = df[col].mode()[0]
-        df[col].fillna(mode, inplace=True)
-    return df
-
-
-def balance(df):
-    # undersample majority class to handle class imbalance
-    num_pos = len(df[df['labels'] == 1])
-    num_neg = df.shape[0] - num_pos
-    num_to_drop = int((num_neg*.79) - num_pos) #25% pos - tinker
-    df.drop(df.query('labels == 0').sample(n=num_to_drop).index, inplace=True)
-    return df
-
-
-def scale(df, cols):
-    scaler = RobustScaler(copy=False)
-    df[cols] = scaler.fit_transform(df[cols])
-    return df

@@ -1,17 +1,16 @@
 import pandas as pd
 import numpy as np
-from sklearn.model_selection import train_test_split, cross_val_score
-from sklearn.metrics import make_scorer, f1_score
-from sklearn.decomposition import PCA, NMF
-from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
-from sklearn.feature_selection import SelectKBest
-from sklearn.model_selection import GridSearchCV, RandomizedSearchCV, StratifiedKFold
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier, AdaBoostClassifier
-from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
-from sklearn.linear_model import LogisticRegression
-from sklearn.grid_search import GridSearchCV
-from transforms import add_labels, Preprocessing, BalanceClasses, save_and_drop_ids, DFselector
-from pipeline import pipe
+import pickle
+import matplotlib.pyplot as plt
+from attributes import Attributes
+from transforms import add_labels, extract_bt_df, Preprocessing, balance, expected_value, backtest
+from visuals import feature_ranking
+from sklearn.preprocessing import RobustScaler
+from imblearn.over_sampling import RandomOverSampler, SMOTE
+from imblearn.under_sampling import RandomUnderSampler
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import confusion_matrix, classification_report
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier, ExtraTreesClassifier
 
 
 if __name__ == '__main__':
@@ -24,113 +23,71 @@ if __name__ == '__main__':
     clean = Preprocessing()
     df = clean.transform(df)
 
-    # Handle class imbalance
-    pos_percent = 0.45
-    balance = BalanceClasses(method='downsample', pos_percent=pos_percent)
-    df = balance.transform(df)
+    # Extract subset for backtesting map
+    # data = extract_bt_df(df)
+    # data = df
 
-    # Save and drop identifying info
-    data, identity_df = save_and_drop_ids(df)
+    # Scale numerical features
+    cols_to_scale = Attributes().get_num_attribs()
+    scaler = RobustScaler()
+    df[cols_to_scale] = scaler.fit_transform(df[cols_to_scale])
 
-    # Split the data
-    y = data.pop('labels')
-    X = data
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33)
+    y = df.pop('labels')
+    X = df
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.30)
 
-# -----------------------------------------------
-    # Search for the best classifier
-    pg =[
-        {
-            'classify': [RandomForestClassifier()],
-            # 'classify__bootstrap': [True], #True
-            # 'classify__class_weight': [None],
-            'classify__criterion': ['entropy'], #'gini'
-            'classify__max_depth': [5, 15, 25, 35], #5 (6, 8)
-            'classify__max_features': ['auto', 25, 50], #50
-            # 'classify__max_leaf_nodes': [None],
-            # 'classify__min_impurity_decrease': [0.0],
-            # 'classify__min_impurity_split': [None],
-            'classify__min_samples_leaf': [10, 20, 30],
-            'classify__min_samples_split': [5, 10, 15], #10
-            # 'classify__min_weight_fraction_leaf': 0.0,
-            'classify__n_estimators': [25, 50, 100, 200], #15, 20
-            'classify__n_jobs': [-1],
-            # 'classify__oob_score': [False], #False
-            'classify__random_state': [42] #None
-            # 'classify__verbose': [0],
-            # 'classify__warm_start': [False]
-        },
-        {
-            'classify': [GradientBoostingClassifier()],
-            # 'classify__criterion': ['friedman_mse'],
-            # 'classify__init': [None],
-            'classify__learning_rate': [0.05], #0.1
-            # 'classify__loss': ['deviance'],
-            'classify__max_depth': [12],
-            'classify__max_features': [15],
-            'classify__max_leaf_nodes': [None, 10, 15], #None
-            'classify__min_impurity_decrease': [0.01], #0.0
-            # 'classify__min_impurity_split': [None],
-            'classify__min_samples_leaf':[30],
-            'classify__min_samples_split': [15],
-            'classify__min_weight_fraction_leaf': [0.01],
-            'classify__n_estimators': [80, 200, 600], #80;
-            # 'classify__presort': ['auto'],
-            # 'classify__random_state': [None],
-            'classify__subsample': [0.9, 0.95, 0.975], #1.0
-            # 'classify__verbose': [0],
-            # 'classify__warm_start': [False]
-        },
-        ]
+    X_train_res, y_train_res, idx_res = balance(X_train, y_train, method='downsample')
 
-    # GridSearch for the best estimator (stratified built-in)
-    # my_f1_scorer = make_scorer(f1_score, pos_label=1, average='binary')
-    grid_search = GridSearchCV(pipe, param_grid=pg, cv=4, scoring='recall') #'f1'
-    grid_search.fit(X_train, y_train)
+    # Train and get feature importances
+    model = RandomForestClassifier(
+            random_state = 42,
+            bootstrap=True,
+            criterion='entropy',
+            max_depth=5,
+            max_features='auto',
+            min_samples_leaf=20,
+            min_samples_split=10,
+            n_estimators=200,
+            n_jobs=-1,
+            class_weight='balanced_subsample',
+            oob_score=False
+    )
 
-    # print results:
-    print("Best estimator found in search:")
-    print(grid_search.best_estimator_)
+    model.fit(X_train, y_train)
+    print("Model is fit and ready to predict.")
 
-    print("Best recall score found in search was {}.".format(grid_search.best_score_))
+    # Report feature importances
+    n = 10
+    importances = model.feature_importances_[:n]
+    indices = np.argsort(importances)[::-1]
+    features = list(X.columns[indices])
+    print("\n Feature Ranking:")
+    for f in range(n):
+        print("%d. %s (%f)" % (f + 1, features[f], importances[indices[f]]))
 
-    print("Best parameters found on training set:")
-    print(grid_search.best_params_)
-# ------------------------------------------------------
+    # # Plot the feature importances
+    # feature_ranking(importances, indices, features)
 
-    # Fit and score a training model
-    # model = pipe.fit(X_train, y_train)
-    #
-    # cv_folds = StratifiedKFold(n_splits=4, random_state=42, shuffle=False) #so I can set a seed
-    #
-    # precision = round(cross_val_score(model, X_train, y_train, cv=cv_folds, \
-    # scoring='precision').mean(), 2)
-    #
-    # recall = round(cross_val_score(model, X_train, y_train, cv=cv_folds, \
-    # scoring='recall').mean(), 2)
-    #
-    # f1_weighted = round(cross_val_score(model, X_train, y_train, cv=cv_folds, \
-    # scoring='f1_weighted').mean(), 2)
-    #
-    # print("Average scores found in CV were Precision: {0}, Recall: {1}, f1_weighted: {2} .".format(precision, recall, f1_weighted))
-    # print("Most important features found on training set:")
-    # # print(pipe.steps[2][1].feature_importances_)
-    #
-    # importances = [(score, name) for name, score in zip(X_train.columns, pipe.steps[1][1].feature_importances_)]
-    #
-    #
-    # importances.sort(key=lambda tup: tup[0])
-    # importances.reverse()
-    # print(list(importances)[0:12])
-    #
-    # # Score the FINAL model
-    # clf = pipe.fit(X_train, y_train)
-    # print("Model is fit and ready to predict.")
-    #
-    # # Score the (FINAL) model
-    # y_pred = clf.predict(X_test)
-    # print("Final results:)
-    # print(classification_report(y_test, y_pred))
-    #
-    #
-    # Pickle and save FINAL model
+    # Score the final model
+    y_pred = model.predict(X_test)
+    y_probs = (model.predict_proba(X_test).T)[1]
+    accuracy = model.score(X_test, y_test)
+    tn, fp, fn, tp = confusion_matrix(y_test, y_pred).ravel()
+    print("Accuracy: {}".format(accuracy))
+    print("Confusion Matrix:")
+    print("TP: {}".format(tp))
+    print("FP: {}".format(fp))
+    print("FN: {}".format(fn))
+    print("TN: {}".format(tn))
+    print("Final results:")
+    print(classification_report(y_test, y_pred))
+
+    # Pickle and save final model
+    # with open('model.pkl', 'wb') as f:
+    #     pickle.dump(model, f)
+
+    # # Make backtesting predictions for map
+    # backtest('model.pkl', '../data/2016_backtest.csv')
+
+    # Get # TP and FP by probabilities, for expected value calucation
+    numTP, numFP = expected_value(y_test, y_pred, y_probs, num_jobs=400)
