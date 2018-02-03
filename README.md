@@ -74,10 +74,11 @@ Class     | Precision | Recall | f1-score | Support
 negative  | 0.94      | 0.53   | 0.68     | 4716
 positive  | 0.13      | 0.70   | 0.23     | 490
 avg/total | 0.87      | 0.55   | 0.64     | 5206
+
 <sub>__Table 1:__ Random Forest Classifier scores on holdout data. </sub>
 
 
-##### Feature Importances
+#### Feature Importances
 Feature Ranking        | Score
 -----------------------|--------
 Year Built             | (0.0474)
@@ -93,7 +94,8 @@ Attached Garage        | (0.0003)
 
 <sub>__Table 2:__ Top ten predictive features in final model. The score of *all* importances in the model sums to 1.</sub>
 
-Here's a subset of the test data to demonstrate visually the model's 0.55 Recall score.
+
+I mapped a subset of the test data to demonstrate visually the model's 0.55 Recall score.
   * Green checkmarks are True Positives
   * Red checkmarks are False Positives
   * Green X's are True Negatives
@@ -122,6 +124,7 @@ Here are some ideas for improving upon this project:
 - Batista, G., Prati, R. and Monard M. [A Study of the Behavior of Several Methods for Balancing Machine Learning Training Data.](http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.58.7757&rep=rep1&type=pdf)
 - Isaac Laughlin's [Pipeline how-to video.](https://www.youtube.com/watch?v=0UWXCAYn8rk)
 - A **big** thank you to Galvanize instructor [Elliot Cohen](https://github.com/Ecohen4), who served as advisor and cheerleader on this project, and to all of my instructors during the immersive.
+- I was lucky to get connected to a company that understands the power of predictive modeling, and was willing to let me use their data for my project. Thank you, Radiant Labs!
 
 ## About Me
 I'm new to data science, but not to data analysis. My background is in modeling portfolio risk in the solar financing industry and advising on public policy based on market research and modeling. I'm available for contract data work, and seeking a full-time position where I can program machine learning and other advanced analytics solutions. I thrive in situations where people want to know the fundamental truth of their business, organization, or market as much as I do. Connect with me on [LinkedIn](www.linkedin.com/in/amberjrivera) or please [send me an email](<amberjrivera@gmail.com>) with any question, critique, or idea for this project!
