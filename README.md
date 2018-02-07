@@ -128,3 +128,7 @@ Here are some ideas for improving upon this project:
 
 ## About Me
 I'm new to data science, but not to data analysis. My background is in modeling portfolio risk in the solar financing industry and advising on public policy based on market research and modeling. I'm available for contract data work, and seeking a full-time position where I can program machine learning and other advanced analytics solutions. I thrive in situations where people want to know the fundamental truth of their business, organization, or market as much as I do. Connect with me on [LinkedIn](www.linkedin.com/in/amberjrivera) or please [send me an email](<amberjrivera@gmail.com>) with any question, critique, or idea for this project!
+
+<img src = "visuals/showcase-sketch-notes.jpg_large" alt="Sketch notes from my capstone presentation, compliments of the ever-creative Jordan Wirfs-Brock.">
+
+<sub> Sketch notes from my 01-30-18 capstone presentation, compliments of the ever-creative [Jordan Wirfs-Brock](https://twitter.com/jordanwb?ref_src=twsrc%5Egoogle%7Ctwcamp%5Eserp%7Ctwgr%5Eauthor), who first told me that I was meant for data science. #IEforever </sub>
