@@ -23,9 +23,9 @@ use machine learning to predict a household's propensity to install an energy ef
 6. [About Me](#about-me)
 
 ## The Question and Motivations
-**Looking at the building characteristics of a single-family residence, some Census information, and simulated assumptions about home energy use, is it possible to identify those homes that will install an energy efficiency upgrade?**
+**Looking at the building characteristics of a single-family residence, some Census information, and simulated assumptions about home energy use, is it possible to identify homes that will install an energy efficiency upgrade?**
 
-Have you ever considered doing a home improvement that is energy efficient? If you've thought about it but have not done it yet, why not? Maybe the timing wasn't right, or you had more pressing financial priorities...but, is there perhaps an even more fundamental logic underlying that decision? For my capstone I partnered with Radiant Labs and Fuel Switch, sister companies that are using data and analytics to help more people make energy efficiency upgrades. I set out with existing data that they had aggregated, to see if I could use machine learning to build a predictive model that identifies those homes most likely to make an upgrade. Some examples of home energy upgrades are adding insulation, updating an old gas furnace, replacing a gas furnace with an electric heat pump, installing a new water heater, switching to an electric vehicle, or going solar (PV panels on the roof, or solar thermal for hot water).
+Have you ever considered doing a home improvement that is energy efficient? If you've thought about it but haven't done it yet, why not? Maybe the timing wasn't right, or you had more pressing financial priorities...but, is there perhaps an even more fundamental logic underlying that decision? For my capstone I partnered with Radiant Labs and Fuel Switch, sister companies that are using data and analytics to help more people make energy efficiency upgrades. I set out with existing data that they had aggregated, to see if I could use machine learning to build a predictive model that identifies those homes most likely to make an upgrade. Some examples of home energy upgrades are adding insulation, updating an old gas furnace, replacing a gas furnace with an electric heat pump, installing a new water heater, switching to an electric vehicle, or going solar (PV panels on the roof, or solar thermal for hot water).
 
 For a homeowner, the benefit of upgrading is lower monthly utility bills. For the city or county running a home energy efficiency program to recruit households to upgrade, a main motivation is to reduce overall carbon emissions to meet climate change goals. For the company offering home energy audits and upgrade services, knowing which homes are more likely to upgrade reduces the overall cost of finding the right customer, and can mean more annual revenue.
 
@@ -81,7 +81,7 @@ avg/total | 0.87      | 0.55   | 0.64     | 5206
 #### Feature Importances
 Feature Ranking        | Score
 -----------------------|--------
-Year Built             | (0.0474)
+Year Built             | (0.047)
 Room Count             | (0.040)
 Bedroom Count          | (0.033)
 Last Sale Price        | (0.027)
@@ -111,7 +111,7 @@ Even though the predictive power of the model topped out at a 0.55 Recall score,
 
 ## Future Work
 Here are some ideas for improving upon this project:
-- Try and compare more sophisticated imputation methods, such as plugging into the Zillow API to fill in missing sale date and sale price when predicting on new data.
+- Compare more sophisticated imputation methods, such as plugging into the Zillow API to fill in missing sale date and sale price when predicting on new data.
 - Further engineer off of the permits features, encoding their most useful info into the dataset.
 - Find and incorporate relevant behavioral information for each household to improve performance.
 - Incorporate unsupervised techniques to see whether there are any natural patterns or clusters among the data.
@@ -127,8 +127,7 @@ Here are some ideas for improving upon this project:
 - I was lucky to get connected to a company that understands the power of predictive modeling, and was willing to let me use their data for my project. Thank you, Radiant Labs!
 
 ## About Me
-I'm new to data science, but not to data analysis. My background is in modeling portfolio risk in the solar financing industry and advising on public policy based on market research and modeling. I'm available for contract data work, and seeking a full-time position where I can program machine learning and other advanced analytics solutions. I thrive in situations where people want to know the fundamental truth of their business, organization, or market as much as I do. Connect with me on [LinkedIn](www.linkedin.com/in/amberjrivera) or please [send me an email](<amberjrivera@gmail.com>) with any question, critique, or idea for this project!
+I'm new to data science, but not to data analysis. My background is in modeling portfolio risk in the solar financing industry and advising on public policy based on market research and modeling. I'm available for contract data work, and seeking a full-time position where I can program machine learning and other advanced analytics solutions. I thrive in situations where people want to know the fundamental truth of their business, organization, or market as much as I do. Connect with me on [LinkedIn](www.linkedin.com/in/amberjrivera) or [send me an email](<amberjrivera@gmail.com>) with any question, critique, or idea for this project!
 
 <img src = "visuals/showcase-sketch-notes.jpg_large" alt="Sketch notes from my capstone presentation, compliments of the ever-creative Jordan Wirfs-Brock.">
-
-<sub> Sketch notes from my 01-30-18 capstone presentation, compliments of the ever-creative [Jordan Wirfs-Brock](https://twitter.com/jordanwb?ref_src=twsrc%5Egoogle%7Ctwcamp%5Eserp%7Ctwgr%5Eauthor), who first told me that I was meant for data science. #IEforever </sub>
+Sketchnotes from my 01-30-18 capstone presentation, compliments of the ever-creative [Jordan Wirfs-Brock](https://twitter.com/jordanwb?ref_src=twsrc%5Egoogle%7Ctwcamp%5Eserp%7Ctwgr%5Eauthor), who first told me that I was meant for data science. #IEforever
