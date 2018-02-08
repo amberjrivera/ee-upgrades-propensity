@@ -25,17 +25,19 @@ use machine learning to predict a household's propensity to install an energy ef
 ## The Question and Motivations
 **Looking at the building characteristics of a single-family residence, some Census information, and simulated assumptions about home energy use, is it possible to identify homes that will install an energy efficiency upgrade?**
 
-Have you ever considered doing a home improvement that is energy efficient? If you've thought about it but haven't done it yet, why not? Maybe the timing wasn't right, or you had more pressing financial priorities...but, is there perhaps an even more fundamental logic underlying that decision? For my capstone I partnered with Radiant Labs and Fuel Switch, sister companies that are using data and analytics to help more people make energy efficiency upgrades. I set out with existing data that they had aggregated, to see if I could use machine learning to build a predictive model that identifies those homes most likely to make an upgrade. Some examples of home energy upgrades are adding insulation, updating an old gas furnace, replacing a gas furnace with an electric heat pump, installing a new water heater, switching to an electric vehicle, or going solar (PV panels on the roof, or solar thermal for hot water).
+Have you ever considered doing a home improvement that is energy efficient? If you've thought about it but haven't done it yet, why not? Maybe the timing wasn't right, or you had more pressing financial priorities...but, is there perhaps an even more fundamental logic underlying that decision? For my capstone I partnered with Radiant Labs and Fuel Switch, sister companies that are using data and analytics to help more people make energy efficiency upgrades.
 
-For a homeowner, the benefit of upgrading is lower monthly utility bills. For the city or county running a home energy efficiency program to recruit households to upgrade, a main motivation is to reduce overall carbon emissions to meet climate change goals. For the company offering home energy audits and upgrade services, knowing which homes are more likely to upgrade reduces the overall cost of finding the right customer, and can mean more annual revenue.
+I set out with existing data that they had aggregated, to see if I could use machine learning to build a predictive model that identifies those homes most likely to make an upgrade. Some examples of home energy upgrades are adding insulation, updating an old gas furnace, replacing a gas furnace with an electric heat pump, installing a new water heater, switching to an electric vehicle, or going solar (PV panels on the roof, or solar thermal for hot water).
+
+For a homeowner, the benefit of upgrading is lower monthly utility bills. For the city or county running a home energy efficiency program to recruit households to upgrade, a main motivation is to reduce overall carbon emissions to meet climate change goals. For the company offering home energy audits and upgrade services, knowing which homes are more likely to upgrade reduces the overall cost of finding the right customer, and can mean more revenue and profit.
 
 Currently, the company's strategy for acquiring new customers is guided by their ability to identify homes whose equipment is on its last legs (think heating and cooling, water heaters). It would be more powerful, however, to overlay that information with a household's likelihood to install a home energy upgrade, to identify the homes with the highest potential. That set of homes is what this project aims to identify.
 
 ## Data Preparation
-The training dataset, provided to me by the company, includes data aggregated from publicly available sources and data simulated using [NREL's ResStock](https://www.nrel.gov/buildings/resstock.html) tool. The size of the data is 18,400 samples (homes), with 360 features with 18% of the data missing. The classes are imbalanced, with only 9% of the instances in the positive class (defined as a home that has completed a home energy upgrade).
+I built the training dataset from data provided to me by the company, including data aggregated from publicly available sources and data simulated using [NREL's ResStock](https://www.nrel.gov/buildings/resstock.html) tool. The size of the dataset was 18,400 samples (homes), with 360 features and 18% of the data missing. The classes were imbalanced, with only 9% of the instances in the positive class (defined as a home that has completed a home energy upgrade).
 
 ### Cleaning and Missing Values
-I built a Preprocessing class to tidy up and flesh out the data before modeling. I dropped building attributes that were missing more than 75% of values, any redundant or irrelevant attributes, and any attributes or rows that would leak information about the target to the algorithm. I also dropped instances that were missing `last_sale_date` and `last_sale_price`, as I did not have the time to properly research that information to fill in the missing values. After those steps, the dataset was 17,300 x 205 with 30% numerical attributes and 70% categorical.
+I built a Preprocessing class to tidy up and flesh out the data before modeling. I dropped building attributes that were missing more than 75% of values, any redundant or irrelevant attributes, and any attributes or rows that would leak information about the target to the algorithm. I also dropped instances that were missing `last_sale_date` and `last_sale_price`, as I did not have time to properly research that information to fill in the missing values. After those steps, the dataset was 17,300 x 205 with 30% numerical attributes and 70% categorical.
 
 Given the time constraints, I handled missing values thoughtfully but bluntly. For numeric attributes, I filled with the median value of all non-null observations, except for a home's solar PV potential, which I filled with the mode (while there is likely diversity in the size, pitch and orientation of rooftops, homes are all located in the same 25 square mile geographic area). I filled all missing values in categorical attributes with their mode, except for `zillow_neighborhood`, which I filled with 'Unknown'.
 
@@ -59,9 +61,9 @@ Ultimately, I balanced the classes in the training dataset to 50/50, and chose t
 Before running the data through any algorithms, I split off a third of it (using sklearn's `train_test_split`) to set aside and use later to score the final model. It's important to have this "unseen" data in order to get a measure of model performance that is not inflated by overfitting the prediction to the training data. With the other two thirds, I used k-fold cross validation with four folds to compare classifiers for this binary classification problem.
 
 ### Identifying The Best Classifier
-I started by running my clean, engineered, and balanced feature matrix through various classifiers, from simple Logistic Regression to the more complex Multi-Layer Perceptron, to see which scored the best. I initialized several classifiers available in sci-kit learn with their out-of-the-box defaults plus a bit of tuning based on intuition.
+I started by running the clean, engineered, and balanced feature matrix through various classifiers, from simple Logistic Regression to the more complex Multi-Layer Perceptron, to see which scored the best. I initialized several classifiers available in sci-kit learn with their out-of-the-box defaults plus a bit of tuning based on intuition.
 
-I chose to evaluate my classifier based on its Recall score, averaged across cross validation folds. Recall is the true positive rate: out of all the homes that really would do an upgrade, how many did the model identify? I was aiming to minimize the number of false negative predictions: If Radiant Labs doesn't talk to a home, it misses out on a 40:1 profit:cost ratio, and on the chance to reduce carbon emissions. On the other hand, if they mistakenly speak to someone who will not actually upgrade (false positive), it doesn't cost them very much, and they've at least planted a seed about their services.
+I chose to evaluate the classifier based on its Recall score, averaged across cross validation folds. Recall is the true positive rate: out of all the homes that really would do an upgrade, how many did the model identify? I was aiming to minimize the number of false negative predictions: If Radiant Labs doesn't talk to a home, it misses out on a 40:1 profit:cost ratio, and on the chance to reduce carbon emissions. On the other hand, if they mistakenly speak to someone who will not actually upgrade (false positive), it doesn't cost them very much, and they've at least planted a seed about their services.
 
 With a bit more manual tuning on the top five performing classifiers, and a reasonable amount of grid searching first using sklearn's `GridSearchCV` and then `RandomizedSearchCV`, Random Forest and Gradient Boosting rose to the top of the pack. This checked out against my earlier exploratory data analysis, when I found multicollinearity among many features -- both algorithms are robust to this problem. While there are certainly datasets with a worse high dimensionality problem than this one, 200 attributes is still a lot; and, thinking about how this model may scale as the company grows, it's reasonable to think that additional attributes could make their way into the dataset. Again, both algorithms are robust to high dimensionality. So, how to choose?
 
@@ -94,8 +96,13 @@ Attached Garage        | (0.0003)
 
 <sub>__Table 2:__ Top ten predictive features in final model. The score of *all* importances in the model sums to 1.</sub>
 
+The training set included both homes that had already done an upgrade (the positive class), and homes that had not. The task was to train the model to properly classify a home as either 'will upgrade' or 'won't upgrade'. For every prediction the classifier makes, there are four possible outcomes: True Positive, False Positive, True Negative, and False Negative.
 
-I mapped a subset of the test data to demonstrate visually the model's 0.55 Recall score.
+True Positive means the model saw a house that had already installed an energy efficiency upgrade (but it didn't know that bit of info, of course), and accurately predicted 'yes, will upgrade'. Similarly, True Negative means the model accurately classified a home as 'will not upgrade'.
+
+False Positive means the model saw a house that had not upgraded, and incorrectly classified it into the positive class, 'yes, will upgrade'. And False Negative means the model failed to properly classify a home that had in fact upgraded.
+
+I mapped a subset of the test data to demonstrate visually the model's 0.55 Recall score, in the context of the four possible classification outcomes:
   * Green checkmarks are True Positives
   * Red checkmarks are False Positives
   * Green X's are True Negatives
@@ -103,18 +110,18 @@ I mapped a subset of the test data to demonstrate visually the model's 0.55 Reca
 
 <img src = "visuals/map-visual-subset-all.png" alt="Map visually demonstrating the model's performance of 0.55 Recall.">
 
-
 ### Business Implications
-Even though the predictive power of the model topped out at a 0.55 Recall score, the analysis provided new insight that Radiant Labs and Fuel Switch can incorporate into their work. By applying ratio of the True Positives and False Positives from this model to their annual volume of home upgrades, we found that this kind of modeling has the potential to increase annual profit by 13%.
+The choice to use Recall as the metric for optimizing the classifier was based on the company's very low cost to talk to a household about an energy efficiency upgrade, as compared to the potential profit if the home converts and makes an installation. The higher the Recall score, the lower the proportion of False Negatives out of all homes that are in the positive class.
 
-*[visual TK: confusion matrix and profit curve]*
+Even though the predictive power of the model topped out at a 0.55 Recall score, the analysis provided new insight that Radiant Labs and Fuel Switch can incorporate into their work. To estimate the expected value of this analysis, applied the *ratio* of the True Positives and False Positives from this model to the volume of homes that Radiant Labs can handle in a given year (500). Multiplying through the costs and benefits they face for either a home that is a True Positive and a False Positive, we found that this kind of modeling has the potential to increase their annual profit by 13%.
 
 ## Future Work
 Here are some ideas for improving upon this project:
-- Compare more sophisticated imputation methods, such as plugging into the Zillow API to fill in missing sale date and sale price when predicting on new data.
-- Further engineer off of the permits features, encoding their most useful info into the dataset.
-- Find and incorporate relevant behavioral information for each household to improve performance.
-- Incorporate unsupervised techniques to see whether there are any natural patterns or clusters among the data.
+- Compare more sophisticated imputation methods, such as plugging into the Zillow API to fill in 'sale date' and 'sale price' when predicting on new data that is missing those fields.
+- Further engineer off of the permits features, encoding their most useful info into the dataset (e.g. how long until a relevant piece of home equipment goes out in that household, at which point they'll be a prime candidate for an energy efficiency upgrade).
+- Find relevant behavioral data for each household to see if it adds signal to the dataset.
+- Incorporate unsupervised techniques to see whether it would make more sense to build separate models based on customer segments, or based on type of upgrades.
+- Work with the company to develop a custom scorer by optimizing the balance of precision and recall based on more specific business priorities/market realities (using [Sklearn's fbeta_score](http://scikit-learn.org/stable/modules/generated/sklearn.metrics.fbeta_score.html))
 
 
 ## Acknowledgements
