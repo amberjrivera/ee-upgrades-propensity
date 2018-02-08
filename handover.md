@@ -28,7 +28,7 @@
 
 ### Questions
 1. Collinearity matrix: Both dark red and dark blue indicate collinearity?
-  - Yes, the two features that correspond to that box are either positively correlated (darker red), or negatively correlated (darker blue).
+    - Yes, the two features that correspond to that box are either positively correlated (darker red), or negatively correlated (darker blue).
 
 2. Tradeoff between AUC and Recall
     - There is the ROC AUC, and there is the precision-recall AUC. Since this is an unbalanced dataset, the precision-recall metric and PR-AUC are better to use than the ROC curve. Even though we balance the classes in training, the reality on unseen data is that most homes have not yet upgraded, so the distribution of data you'll predict on is still unbalanced.
@@ -36,17 +36,17 @@
     - Working to optimize the precision-recall AUC would be a good way to further this analysis. You could use [sklearn's auc](http://scikit-learn.org/stable/modules/generated/sklearn.metrics.auc.html#sklearn.metrics.auc) for this.
 
 3. What additional data points would you predict would lead to a higher recall score?
-  - It's hard to know any particular feature's effect on a score, and you'll be constrained to the data that are available and join-able. Perhaps there are research papers in this area that have findings you could start from; otherwise, it'd be a matter of adding the data in, and testing it's utility at improving the score. You could do this either by using an algorithm that does fine with high dimensions (logistic regression with heavy L1 regularization, random forest, or boosting) and looking at feature importances, or through recursive feature elimination with the other algorithms.
+    - It's hard to know any particular feature's effect on a score, and you'll be constrained to the data that are available and join-able. Perhaps there are research papers in this area that have findings you could start from; otherwise, it'd be a matter of adding the data in, and testing it's utility at improving the score. You could do this either by using an algorithm that does fine with high dimensions (logistic regression with heavy L1 regularization, random forest, or boosting) and looking at feature importances, or through recursive feature elimination with the other algorithms.
 
-  - There are some things I'd be curious to know the predictive power of for this target. For example:
-    - Does the household recycle?
-    - How many hours a day is the house occupied, and during which hours?
-    - Is it a family, a group house, or a single occupant?
-    - Is this their first home? Is it their only home? How long do they expect to live in this home?
-    - How do the occupants commute?
-    - Has the household ever discussed purchasing an electric vehicle?
-    - What is the race, ethnicity, religion, education level of the home? (this is somewhat captured for the block in the Census data)
-    - What is the dominant political affiliation of the home?
+    - There are some things I'd be curious to know the predictive power of for this target. For example:
+      - Does the household recycle?
+      - How many hours a day is the house occupied, and during which hours?
+      - Is it a family, a group house, or a single occupant?
+      - Is this their first home? Is it their only home? How long do they expect to live in this home?
+      - How do the occupants commute?
+      - Has the household ever discussed purchasing an electric vehicle?
+      - What is the race, ethnicity, religion, education level of the home? (this is somewhat captured for the block in the Census data)
+      - What is the dominant political affiliation of the home?
 
 ### Ideas for Further Work / Research
 * See if the same score/outcomes can be replicated in Data Science Studio (after applying the same transforms, and holding out 30% of the data to use for scoring).
