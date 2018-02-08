@@ -8,7 +8,6 @@ import pickle
 from attributes import Attributes
 from imblearn.over_sampling import RandomOverSampler, SMOTE
 from imblearn.under_sampling import RandomUnderSampler
-from sklearn.metrics import confusion_matrix, classification_report
 from sklearn.base import TransformerMixin, BaseEstimator
 
 
@@ -35,39 +34,18 @@ def add_labels(df):
     df['labels'] = df.apply(lambda row: 1 if row['assessor_id'] in positives \
     else 0, axis=1) #9% of data in positive class.
 
-    # # List of 2016 upgrades, for hindcasting
-    sixteens = set(pd.read_csv('../data/upgrades_2016.csv', usecols=[1], \
-    squeeze=True).str[1:].tolist())
-
-    df['labels_backtest'] = df.apply(lambda row: 1 if row['assessor_id'] in \
-    sixteens else 0, axis=1) #92 homes with full data upgraded in 2016
+    # # # List of 2016 upgrades, for hindcasting
+    # sixteens = set(pd.read_csv('../data/upgrades_2016.csv', usecols=[1], \
+    # squeeze=True).str[1:].tolist())
+    #
+    # df['labels_backtest'] = df.apply(lambda row: 1 if row['assessor_id'] in \
+    # sixteens else 0, axis=1) #92 homes with full data upgraded in 2016
 
     # drop unique ID
     df.drop(columns='assessor_id', inplace=True)
 
     return df
 
-
-def extract_bt_df(df):
-    '''
-    Function to sample out homes that either did or didn't upgrade in 2016,
-    before training, to later make backtest map.
-    '''
-    neg_idx = df.index[df['labels_backtest'] == 0]
-    pos_idx = df.index[df['labels_backtest'] == 1]
-    negatives = df.loc[neg_idx].sample(50)
-    positives = df.loc[pos_idx].sample(50)
-    together = [negatives, positives]
-    bt_df = pd.concat(together).sample(frac=1)
-    bt_df.drop(columns='labels', inplace=True)
-
-    df.drop(negatives.index, inplace=True)
-    df.drop(positives.index, inplace=True)
-    df.drop(columns=['lat', 'lon', 'labels_backtest'], inplace=True)
-
-    #write to csv for later predictions
-    bt_df.to_csv('../data/2016_backtest.csv')
-    return df
 
 
 class Preprocessing(object):
@@ -193,36 +171,6 @@ class Preprocessing(object):
         return processed
 
 
-def backtest(path_to_model, data_path):
-    '''
-    Function to predict on 100 homes from 2016, for backtest map.
-    '''
-    # get 100 observations held out for backtesting
-    bt_df = pd.read_csv(data_path, index_col=0)
-    map_df = bt_df.loc[:,['lat', 'lon', 'labels_backtest']]
-
-    new_data = bt_df.drop(columns=['lat', 'lon'])
-    y = new_data.pop('labels_backtest')
-    X = new_data
-
-    #unpickle model and predict
-    with open(path_to_model, 'rb') as f:
-        model = pickle.load(f)
-
-    y_pred = model.predict(X)
-    tn, fp, fn, tp = confusion_matrix(y, y_pred).ravel()
-    print("TP: {}".format(tp))
-    print("FP: {}".format(fp))
-    print("FN: {}".format(fn))
-    print("TN: {}".format(tn))
-    print(classification_report(y, y_pred))
-
-    map_df['predictions'] = y_pred
-    map_df.to_csv('../data/2016_backtest_results.csv')
-
-    return None
-
-
 def balance(X_train, y_train, method):
     if method == 'downsample':
         # Random downsample to balance classes
@@ -271,11 +219,12 @@ def expected_value(y_test, y_pred, y_probs, num_jobs=500):
     numTP = TP.sum()
     numFP = numPP - numTP
     print("\nTP: {0}, FP: {1}.".format(numTP, numFP))
-    print("There are {0} positives predictions.".format(numPP))
+    print("There are {0} positive predictions.".format(numPP))
     print("There are {0} TP in the predictions".format(numTP))
     print("There are {0} FP in the predictions".format(numFP))
 
     return numTP, numFP
+
 
 class DFselector(TransformerMixin, BaseEstimator):
     '''

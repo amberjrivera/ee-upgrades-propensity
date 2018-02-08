@@ -46,8 +46,9 @@ X = data
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.30)
 
 # Balance classes before training
-sampler = RandomOverSampler(random_state=42, ratio={1:10515}) #50/50
-# sampler = SMOTE(random_state=42, ratio={1:10515}, n_jobs=-1)  #50/50
+# sampler = RandomOverSampler(random_state=42, ratio='auto') #50/50
+sampler = RandomUnderSampler(random_state=42, ratio='auto') #50/50
+# sampler = SMOTE(random_state=42, ratio='auto', n_jobs=-1)  #50/50
 X_train_res, y_train_res = sampler.fit_sample(X_train, y_train)
 
 #COMPARE MODELS
@@ -142,11 +143,3 @@ for name, clf in zip(names, classifiers):
 
 print('\nComparing Classifiers...\n')
 print(scores)
-
-
-# Comparing Classifiers...
-#
-#          Classifier accuracy precision recall    f1
-# 0     Random Forest     0.62      0.58   0.84  0.68
-# 1       Extra Trees     0.99      0.98      1  0.99
-# 2  GradientBoosting     0.85      0.81    0.9  0.85

@@ -187,6 +187,3 @@ print(baseline)
 
 
 # TUNE FINAL MODEL -- none are peforming very well; moving on to modeling full feature matrix.
-# RepeatedStratifiedKFold can be used to repeat Stratified K-Fold n times with different randomization in each repetition.
-# skf = StratifiedKFold(n_splits=3, shuffle=False, random_state=22)
-# sfk.split
