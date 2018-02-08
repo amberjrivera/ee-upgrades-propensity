@@ -113,14 +113,14 @@ I mapped a subset of the test data to demonstrate visually the model's 0.55 Reca
 ### Business Implications
 The choice to use Recall as the metric for optimizing the classifier was based on the company's very low cost to talk to a household about an energy efficiency upgrade, as compared to the potential profit if the home converts and makes an installation. The higher the Recall score, the lower the proportion of False Negatives out of all homes that are in the positive class.
 
-Even though the predictive power of the model topped out at a 0.55 Recall score, the analysis provided new insight that Radiant Labs and Fuel Switch can incorporate into their work. To estimate the expected value of this analysis, applied the *ratio* of the True Positives and False Positives from this model to the volume of homes that Radiant Labs can handle in a given year (500). Multiplying through the costs and benefits they face for either a home that is a True Positive and a False Positive, we found that this kind of modeling has the potential to increase their annual profit by 13%.
+Even though the predictive power of the model topped out at a 0.55 Recall score, the analysis provided new insight that Radiant Labs and Fuel Switch can incorporate into their work. To estimate the expected value of this analysis, I applied the *ratio* of the True Positives and False Positives from this model to the volume of homes that Radiant Labs can handle in a given year (500). Multiplying through the costs and benefits they face for either a True Positive or a False Positive, we found that this kind of modeling has the potential to increase their annual profit by 13%.
 
 ## Future Work
 Here are some ideas for improving upon this project:
 - Compare more sophisticated imputation methods, such as plugging into the Zillow API to fill in 'sale date' and 'sale price' when predicting on new data that is missing those fields.
 - Further engineer off of the permits features, encoding their most useful info into the dataset (e.g. how long until a relevant piece of home equipment goes out in that household, at which point they'll be a prime candidate for an energy efficiency upgrade).
 - Find relevant behavioral data for each household to see if it adds signal to the dataset.
-- Incorporate unsupervised techniques to see whether it would make more sense to build separate models based on customer segments, or based on type of upgrades.
+- Incorporate unsupervised techniques to see whether it would make more sense to build separate models based on customer segments, or based on type of upgrade.
 - Work with the company to develop a custom scorer by optimizing the balance of precision and recall based on more specific business priorities/market realities (using [Sklearn's fbeta_score](http://scikit-learn.org/stable/modules/generated/sklearn.metrics.fbeta_score.html))
 
 
@@ -138,4 +138,4 @@ I'm new to data science, but not to data analysis. My background is in modeling 
 
 <img src = "visuals/showcase-sketch-notes.jpg_large" alt="Sketch notes from my capstone presentation, compliments of the ever-creative Jordan Wirfs-Brock.">
 
-Sketchnotes from my 01-30-18 capstone presentation, compliments of the ever-creative [Jordan Wirfs-Brock](https://twitter.com/jordanwb) who is the person that told me I was meant for data science. #IEforever
+Sketchnotes from my 01-30-18 capstone presentation, compliments of the ever-creative [Jordan Wirfs-Brock](https://twitter.com/jordanwb), the friend and colleague who told me I was meant for data science. #IEforever
